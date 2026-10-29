@@ -18,6 +18,10 @@ def create_app():
     def index():
         return render_template("complaint_form.html")
 
+    @app.get("/track")
+    def track_page():
+        return render_template("track.html")
+
     @app.get("/login")
     def login_page():
         return render_template("login.html")

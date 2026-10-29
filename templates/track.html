@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Track Complaint - Smart Complaint Management System</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+    input, select { padding: .55rem; font-size: 1rem; } button { padding: .55rem 1rem; font-size: 1rem; cursor: pointer; }
+    .err { color: #b91c1c; } .badge { display: inline-block; padding: .15rem .55rem; border-radius: 999px; background: #e0e7ff; font-weight: 600; }
+    ol.timeline { list-style: none; padding-left: 1rem; border-left: 3px solid #c7d2fe; }
+    ol.timeline li { margin: 0 0 1rem 0; position: relative; padding-left: .8rem; }
+    ol.timeline li::before { content: ""; position: absolute; left: -1.55rem; top: .3rem; width: .8rem; height: .8rem; border-radius: 50%; background: #2563eb; }
+    .when { color: #555; font-size: .9rem; } .card { border: 1px solid #ddd; border-radius: 8px; padding: .8rem 1rem; margin: 1rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Track a Complaint</h1>
+  <input id="ticket" placeholder="SCMS-YYYYMMDD-NNNNN" size="24"> <button id="go">Track</button>
+  <div id="mine"></div>
+  <p id="msg" class="err"></p>
+  <div id="out"></div>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const token = localStorage.getItem("scms_token");
+    if (!token) location.href = "/login";
+    const H = { Authorization: `Bearer ${token}` };
+    const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+    async function track(id) {
+      $("msg").textContent = ""; $("out").innerHTML = "";
+      const r = await fetch(`/complaints/${encodeURIComponent(id)}`, { headers: H });
+      const c = await r.json();
+      if (!r.ok) { $("msg").textContent = c.error; return; }
+      $("out").innerHTML = `
+        <div class="card">
+          <strong>${esc(c.id)}</strong> &mdash; ${esc(c.title)} <span class="badge">${esc(c.status)}</span><br>
+          <span class="when">${esc(c.category)} &middot; ${esc(c.department)} &middot; Severity: ${esc(c.severity)}</span>
+        </div>
+        <h3>Timeline</h3>
+        <ol class="timeline">${(c.history || []).map((h) => `
+          <li><strong>${esc(h.status)}</strong>${h.note ? ` &mdash; ${esc(h.note)}` : ""}<br>
+              <span class="when">${new Date(h.at).toLocaleString()} &middot; by ${esc(h.by)}</span></li>`).join("")}
+        </ol>`;
+    }
+
+    $("go").onclick = () => track($("ticket").value.trim());
+    (async () => {  // citizens: list their complaints for one-click tracking
+      const r = await fetch("/complaints/mine", { headers: H });
+      if (!r.ok) return;
+      const items = await r.json();
+      if (items.length) $("mine").innerHTML = "<h3>My complaints</h3>" + items.map((c) =>
+        `<div><a href="#" data-id="${esc(c.id)}">${esc(c.id)}</a> &mdash; ${esc(c.title)} <span class="badge">${esc(c.status)}</span></div>`).join("");
+      document.querySelectorAll("[data-id]").forEach((a) => (a.onclick = (e) => { e.preventDefault(); track(a.dataset.id); }));
+    })();
+  </script>
+</body>
+</html>

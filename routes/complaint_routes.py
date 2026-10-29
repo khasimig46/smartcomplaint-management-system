@@ -7,6 +7,7 @@ from flask import Blueprint, g, jsonify, request
 from nlp.categorizer import get_categories, suggest_categories
 from services import complaints as schema
 from services.auth import STAFF_ROLES, load_users, login_required, roles_required
+from services import status as lifecycle
 from services.routing import route
 from services.ticket_id import generate_ticket_id
 
@@ -82,6 +83,7 @@ def submit():
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     complaint.update(route(category, load_users(), items, zone=complaint["zone"]))
+    lifecycle.start(complaint, g.user["id"])
     items.append(complaint)
     _save(items)
     return jsonify(complaint), 201
@@ -101,7 +103,10 @@ def override():
                 return jsonify({"error": "You do not have permission to do this"}), 403
             c["category"], c["overridden"] = category, True
             others = [o for o in items if o["id"] != cid]
-            c.update(route(category, load_users(), others, zone=c.get("zone")))  # re-route to the new department
+            if c.get("status", "New") in ("New", "Assigned"):  # re-route only before work starts
+                c.update(route(category, load_users(), others, zone=c.get("zone")))
+                if c["assigned_to"] and c.get("status") == "New":
+                    lifecycle.change(c, "Assigned", "system", f"Auto-assigned to {c['assigned_to']}")
             _save(items)
             return jsonify(c)
     return jsonify({"error": "Complaint not found"}), 404
@@ -120,3 +125,33 @@ def list_complaints():
 @roles_required("citizen")
 def my_complaints():
     return jsonify([c for c in _load() if c.get("citizen_id") == g.user["id"]])
+
+
+@bp.get("/complaints/<cid>")
+@login_required
+def get_complaint(cid):
+    for c in _load():
+        if c["id"] == cid:
+            if not _can_view(g.user, c):
+                return jsonify({"error": "You do not have permission to view this complaint"}), 403
+            return jsonify(c)
+    return jsonify({"error": "Complaint not found"}), 404
+
+
+@bp.patch("/complaints/<cid>/status")
+@login_required
+def update_status(cid):
+    data = request.get_json(silent=True) or {}
+    new_status, note = data.get("status"), (data.get("note") or "").strip() or None
+    items = _load()
+    for c in items:
+        if c["id"] == cid:
+            if not lifecycle.allowed_by(g.user, c, new_status):
+                return jsonify({"error": "You do not have permission to make this change"}), 403
+            try:
+                lifecycle.change(c, new_status, g.user["id"], note)
+            except lifecycle.TransitionError as e:
+                return jsonify({"error": str(e)}), 400
+            _save(items)
+            return jsonify(c)
+    return jsonify({"error": "Complaint not found"}), 404
