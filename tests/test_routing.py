@@ -45,8 +45,9 @@ def test_unavailable_agents_go_to_supervisor_queue():
     assert r["assigned_to"] is None and r["needs_supervisor"] is True
 
 
-def test_submitted_complaint_is_routed(app, make_user):
+def test_submitted_complaint_is_routed(app, make_user, citizen):
     a = make_user("agent", department="Electricity Department")
-    c = app.test_client().post("/submit-complaint", json={"text": "Street light not working, power cut"}).get_json()
+    body = {"title": "Street light", "description": "Street light not working, power cut", "severity": "Medium"}
+    c = app.test_client().post("/submit-complaint", json=body, headers=citizen).get_json()
     assert c["department"] == "Electricity Department"
     assert c["assigned_to"] == a["id"]
