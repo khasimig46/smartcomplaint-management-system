@@ -1,14 +1,11 @@
 import pytest
 
-from app import create_app
 from nlp.categorizer import suggest_categories
-import routes.complaint_routes as cr
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    monkeypatch.setattr(cr, "STORE", tmp_path / "store.json")
-    return create_app().test_client()
+def client(app):
+    return app.test_client()
 
 
 def test_top_3_categories_suggested():

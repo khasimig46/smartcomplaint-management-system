@@ -4,3 +4,4 @@ venv/
 .env
 .pytest_cache/
 data/complaints_store.json
+data/users.json
