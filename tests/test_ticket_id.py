@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 import pytest
 
+from conftest import complaint_body
 from services.ticket_id import generate_ticket_id, is_valid
 
 DAY = datetime(2026, 10, 29, tzinfo=timezone.utc)
@@ -33,8 +34,8 @@ def test_no_duplicates_over_many_complaints():
     assert len(ids) == len(set(ids))
 
 
-def test_submitted_complaint_gets_ticket_id(client):
-    a = client.post("/submit-complaint", json={"text": "Water leakage near park"}).get_json()
-    b = client.post("/submit-complaint", json={"text": "Pothole on main road"}).get_json()
+def test_submitted_complaint_gets_ticket_id(client, citizen):
+    a = client.post("/submit-complaint", json=complaint_body(), headers=citizen).get_json()
+    b = client.post("/submit-complaint", json=complaint_body(title="Pothole"), headers=citizen).get_json()
     assert is_valid(a["id"]) and is_valid(b["id"])
     assert a["id"] != b["id"]

@@ -8,6 +8,7 @@ from app import create_app
 @pytest.fixture
 def app(tmp_path, monkeypatch):
     monkeypatch.setattr(cr, "STORE", tmp_path / "store.json")
+    monkeypatch.setattr(cr, "UPLOADS", tmp_path / "uploads")
     monkeypatch.setattr(auth, "USERS", tmp_path / "users.json")
     app = create_app()
     app.config.update(TESTING=True, SECRET_KEY="test-secret")
@@ -29,3 +30,16 @@ def login(app):
         r = app.test_client().post("/auth/login", json={"email": email, "password": password})
         return {"Authorization": f"Bearer {r.get_json()['token']}"}
     return _login
+
+
+@pytest.fixture
+def citizen(make_user, login):
+    """Auth headers for a logged-in citizen."""
+    u = make_user("citizen", email="citizen@test.com")
+    return login(u["email"])
+
+
+def complaint_body(**overrides):
+    body = {"title": "Water leakage", "description": "Water is leaking from the main pipe", "severity": "High"}
+    body.update(overrides)
+    return body

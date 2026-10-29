@@ -2,15 +2,18 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, g, jsonify, request
 
 from nlp.categorizer import get_categories, suggest_categories
-from services.auth import STAFF_ROLES, load_users, roles_required
+from services import complaints as schema
+from services.auth import STAFF_ROLES, load_users, login_required, roles_required
 from services.routing import route
 from services.ticket_id import generate_ticket_id
 
 bp = Blueprint("complaints", __name__)
-STORE = Path(__file__).resolve().parent.parent / "data" / "complaints_store.json"
+BASE = Path(__file__).resolve().parent.parent
+STORE = BASE / "data" / "complaints_store.json"
+UPLOADS = BASE / "uploads"
 
 
 def _load():
@@ -18,7 +21,13 @@ def _load():
 
 
 def _save(items):
+    STORE.parent.mkdir(parents=True, exist_ok=True)
     STORE.write_text(json.dumps(items, indent=2))
+
+
+def _can_view(user, complaint):
+    return user["role"] in ("supervisor", "admin") or complaint.get("citizen_id") == user["id"] \
+        or complaint.get("assigned_to") == user["id"]
 
 
 @bp.get("/categories")
@@ -35,29 +44,51 @@ def suggest():
 
 
 @bp.post("/submit-complaint")
+@roles_required("citizen")
 def submit():
-    data = request.get_json(silent=True) or {}
-    text = data.get("text", "").strip()
-    if not text:
-        return jsonify({"error": "Complaint text is required"}), 400
-    suggestions = suggest_categories(text)
+    """Accepts multipart/form-data (with images) or JSON (without images)."""
+    form = request.form if request.form or request.files else (request.get_json(silent=True) or {})
+    images = [(f.filename or "image", f.read()) for f in request.files.getlist("images") if f and f.filename]
+    fields, errors = schema.validate(form, images, get_categories())
+    if errors:
+        return jsonify({"error": "Validation failed", "fields": errors}), 400
+
+    suggestions = suggest_categories(f"{fields['title']}. {fields['description']}")
+    category = fields["category"] or suggestions[0]["category"]
     items = _load()
+    ticket = generate_ticket_id(c["id"] for c in items)
+
+    saved = []
+    if images:
+        folder = UPLOADS / ticket
+        folder.mkdir(parents=True, exist_ok=True)
+        for i, (_, data) in enumerate(images, 1):
+            path = folder / f"image{i}{schema.image_extension(data[:8])}"
+            path.write_bytes(data)
+            saved.append(str(path.relative_to(UPLOADS.parent)))
+
     complaint = {
-        "id": generate_ticket_id(c["id"] for c in items),
-        "text": text,
+        "id": ticket,
+        "citizen_id": g.user["id"],
+        "title": fields["title"],
+        "description": fields["description"],
+        "severity": fields["severity"],
         "suggested": suggestions,
-        "category": suggestions[0]["category"],
-        "overridden": False,
-        "zone": data.get("zone"),
+        "category": category,
+        "overridden": category != suggestions[0]["category"],
+        "images": saved,
+        "location": fields["location"],
+        "zone": fields["zone"],
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    complaint.update(route(complaint["category"], load_users(), items, zone=complaint["zone"]))
+    complaint.update(route(category, load_users(), items, zone=complaint["zone"]))
     items.append(complaint)
     _save(items)
     return jsonify(complaint), 201
 
 
 @bp.post("/override-category")
+@login_required
 def override():
     data = request.get_json(silent=True) or {}
     cid, category = data.get("complaint_id"), data.get("category")
@@ -66,6 +97,8 @@ def override():
     items = _load()
     for c in items:
         if c["id"] == cid:
+            if not _can_view(g.user, c):
+                return jsonify({"error": "You do not have permission to do this"}), 403
             c["category"], c["overridden"] = category, True
             others = [o for o in items if o["id"] != cid]
             c.update(route(category, load_users(), others, zone=c.get("zone")))  # re-route to the new department
@@ -77,4 +110,13 @@ def override():
 @bp.get("/complaints")
 @roles_required(*STAFF_ROLES)
 def list_complaints():
-    return jsonify(_load())
+    items = _load()
+    if g.user["role"] == "agent":
+        items = [c for c in items if c.get("assigned_to") == g.user["id"]]
+    return jsonify(items)
+
+
+@bp.get("/complaints/mine")
+@roles_required("citizen")
+def my_complaints():
+    return jsonify([c for c in _load() if c.get("citizen_id") == g.user["id"]])

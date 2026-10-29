@@ -22,9 +22,10 @@ def test_correct_category_ranked_first():
     assert suggest_categories("Street light not working, power cut")[0]["category"] == "Electricity"
 
 
-def test_user_can_override_suggestion(client):
-    c = client.post("/submit-complaint", json={"text": "Garbage not collected"}).get_json()
-    r = client.post("/override-category", json={"complaint_id": c["id"], "category": "Roads"})
+def test_user_can_override_suggestion(client, citizen):
+    body = {"title": "Garbage", "description": "Garbage not collected", "severity": "Low"}
+    c = client.post("/submit-complaint", json=body, headers=citizen).get_json()
+    r = client.post("/override-category", json={"complaint_id": c["id"], "category": "Roads"}, headers=citizen)
     assert r.get_json()["category"] == "Roads"
     assert r.get_json()["overridden"] is True
 
