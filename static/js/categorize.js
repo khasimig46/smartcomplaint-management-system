@@ -40,7 +40,7 @@ $("submitBtn").addEventListener("click", async () => {
     })).data;
   }
   $("message").textContent =
-    `Complaint #${final.id} saved under "${final.category}"` +
+    `Complaint saved. Your ticket ID is ${final.id}. Category: "${final.category}"` +
     (final.overridden ? " (manually overridden)." : ".");
   $("text").value = ""; $("results").classList.add("hidden");
 });
