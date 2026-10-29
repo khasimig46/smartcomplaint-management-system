@@ -5,7 +5,8 @@ from pathlib import Path
 from flask import Blueprint, jsonify, request
 
 from nlp.categorizer import get_categories, suggest_categories
-from services.auth import STAFF_ROLES, roles_required
+from services.auth import STAFF_ROLES, load_users, roles_required
+from services.routing import route
 from services.ticket_id import generate_ticket_id
 
 bp = Blueprint("complaints", __name__)
@@ -47,8 +48,10 @@ def submit():
         "suggested": suggestions,
         "category": suggestions[0]["category"],
         "overridden": False,
+        "zone": data.get("zone"),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
+    complaint.update(route(complaint["category"], load_users(), items, zone=complaint["zone"]))
     items.append(complaint)
     _save(items)
     return jsonify(complaint), 201
@@ -64,6 +67,8 @@ def override():
     for c in items:
         if c["id"] == cid:
             c["category"], c["overridden"] = category, True
+            others = [o for o in items if o["id"] != cid]
+            c.update(route(category, load_users(), others, zone=c.get("zone")))  # re-route to the new department
             _save(items)
             return jsonify(c)
     return jsonify({"error": "Complaint not found"}), 404
