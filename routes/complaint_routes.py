@@ -5,6 +5,7 @@ from pathlib import Path
 from flask import Blueprint, jsonify, request
 
 from nlp.categorizer import get_categories, suggest_categories
+from services.auth import STAFF_ROLES, roles_required
 from services.ticket_id import generate_ticket_id
 
 bp = Blueprint("complaints", __name__)
@@ -69,5 +70,6 @@ def override():
 
 
 @bp.get("/complaints")
+@roles_required(*STAFF_ROLES)
 def list_complaints():
     return jsonify(_load())

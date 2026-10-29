@@ -3,3 +3,5 @@ scikit-learn
 pandas
 joblib
 pytest
+PyJWT
+bcrypt

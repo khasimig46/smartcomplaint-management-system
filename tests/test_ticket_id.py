@@ -2,17 +2,14 @@ from datetime import datetime, timezone
 
 import pytest
 
-import routes.complaint_routes as cr
-from app import create_app
 from services.ticket_id import generate_ticket_id, is_valid
 
 DAY = datetime(2026, 10, 29, tzinfo=timezone.utc)
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    monkeypatch.setattr(cr, "STORE", tmp_path / "store.json")
-    return create_app().test_client()
+def client(app):
+    return app.test_client()
 
 
 def test_format_is_date_based():
