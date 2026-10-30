@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Notifications - Smart Complaint Management System</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+    input, button { padding: .45rem; font-size: .95rem; } button { cursor: pointer; }
+    .err { color: #b91c1c; } .ok { color: #15803d; font-weight: 600; } .muted { color: #666; font-size: .85rem; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: .7rem 1rem; margin: .5rem 0; }
+    .card.unread { border-color: #2563eb; background: #eff6ff; }
+    .top { display: flex; justify-content: space-between; align-items: center; }
+    .badge { display: inline-block; padding: .1rem .5rem; border-radius: 999px; background: #e0e7ff; font-size: .8rem; font-weight: 600; }
+    label { display: block; margin: .4rem 0; }
+  </style>
+</head>
+<body>
+  <div class="top"><h1>Notifications <span id="count" class="badge"></span></h1><button id="readAll">Mark all read</button></div>
+  <p id="msg" class="err"></p>
+  <div id="list"></div>
+  <p class="muted">Refreshes every 30 seconds. <span id="stamp"></span></p>
+
+  <h2>Delivery preferences</h2>
+  <form id="prefs">
+    <label><input id="email" type="checkbox"> Email updates</label>
+    <label><input id="sms" type="checkbox"> SMS updates (opt-in)</label>
+    <label>Mobile number <input id="phone" placeholder="+919876543210"></label>
+    <button type="submit">Save preferences</button> <span id="prefMsg"></span>
+  </form>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const token = localStorage.getItem("scms_token");
+    if (!token) location.href = "/login";
+    const H = { Authorization: `Bearer ${token}` };
+    const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+    async function load() {
+      const r = await fetch("/notifications/data", { headers: H });
+      if (r.status === 401) { location.href = "/login"; return; }
+      const d = await r.json();
+      if (!r.ok) { $("msg").textContent = d.error; return; }
+      $("msg").textContent = "";
+      $("count").textContent = d.unread ? `${d.unread} unread` : "";
+      $("list").innerHTML = d.items.map((n) => `
+        <div class="card ${n.read ? "" : "unread"}">
+          ${esc(n.message)}<br>
+          <span class="muted">${new Date(n.created_at).toLocaleString()}${n.complaint_id ? ` &middot; ${esc(n.complaint_id)}` : ""}</span>
+          ${n.read ? "" : `<button data-id="${esc(n.id)}">Mark read</button>`}
+        </div>`).join("") || "<p>No notifications yet.</p>";
+      document.querySelectorAll("[data-id]").forEach((b) => (b.onclick = async () => {
+        await fetch(`/notifications/${encodeURIComponent(b.dataset.id)}/read`, { method: "POST", headers: H }); load();
+      }));
+      $("stamp").textContent = `Last updated ${new Date().toLocaleTimeString()}`;
+    }
+
+    async function loadPrefs() {
+      const r = await fetch("/notifications/preferences", { headers: H });
+      if (!r.ok) return;
+      const p = await r.json();
+      $("email").checked = p.email; $("sms").checked = p.sms; $("phone").value = p.phone || "";
+    }
+
+    $("readAll").onclick = async () => { await fetch("/notifications/read-all", { method: "POST", headers: H }); load(); };
+    $("prefs").onsubmit = async (e) => {
+      e.preventDefault();
+      const r = await fetch("/notifications/preferences", { method: "PUT", headers: { ...H, "Content-Type": "application/json" },
+        body: JSON.stringify({ email: $("email").checked, sms: $("sms").checked, phone: $("phone").value }) });
+      const d = await r.json();
+      $("prefMsg").textContent = r.ok ? "Saved." : d.error; $("prefMsg").className = r.ok ? "ok" : "err";
+    };
+    load(); loadPrefs(); setInterval(load, 30000);
+  </script>
+</body>
+</html>

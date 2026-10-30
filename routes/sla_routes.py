@@ -3,7 +3,7 @@ import threading
 from flask import Blueprint, g, jsonify, request
 
 import routes.complaint_routes as cr
-from services import sla
+from services import notifications, sla
 from services.auth import STAFF_ROLES, roles_required
 
 bp = Blueprint("sla", __name__, url_prefix="/sla")
@@ -16,6 +16,7 @@ def run_check():
         new = sla.check(items)
         if new:
             cr._save(items)
+            notifications.sla_alerts(new, items)
         return new
 
 
