@@ -7,6 +7,7 @@ from routes.complaint_routes import bp
 from routes.dashboard_routes import bp as dashboard_bp
 from routes.evidence_routes import bp as evidence_bp
 from routes.notification_routes import bp as notifications_bp
+from routes.resolution_routes import bp as resolution_bp
 from routes.sla_routes import bp as sla_bp, start_monitor
 from services.auth import seed_admin_from_env
 
@@ -20,6 +21,7 @@ def create_app():
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(evidence_bp)
     app.register_blueprint(notifications_bp)
+    app.register_blueprint(resolution_bp)
     seed_admin_from_env()
 
     @app.get("/")

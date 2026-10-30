@@ -85,7 +85,7 @@ def test_download_evidence(setup, make_user, login):
 def test_closed_complaint_rejects_evidence(setup):
     c, comp, hdr = setup
     for s in ("In Progress", "Resolved"):
-        c.patch(f"/complaints/{comp['id']}/status", json={"status": s}, headers=hdr["agent"])
+        c.patch(f"/complaints/{comp['id']}/status", json={"status": s, "note": "Pipe replaced"}, headers=hdr["agent"])
     c.patch(f"/complaints/{comp['id']}/status", json={"status": "Closed"}, headers=hdr["citizen"])
     r = upload(c, comp["id"], hdr["agent"], ("late.jpg", JPEG))
     assert r.status_code == 400 and "closed" in r.get_json()["error"]
