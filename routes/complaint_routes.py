@@ -7,6 +7,7 @@ from flask import Blueprint, g, jsonify, request
 from nlp.categorizer import get_categories, suggest_categories
 from services import complaints as schema
 from services.auth import STAFF_ROLES, load_users, login_required, roles_required
+from services import sla
 from services import status as lifecycle
 from services.routing import route
 from services.ticket_id import generate_ticket_id
@@ -84,6 +85,7 @@ def submit():
     }
     complaint.update(route(category, load_users(), items, zone=complaint["zone"]))
     lifecycle.start(complaint, g.user["id"])
+    sla.assign_deadline(complaint)
     items.append(complaint)
     _save(items)
     return jsonify(complaint), 201

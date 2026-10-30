@@ -2,6 +2,7 @@ import pytest
 
 import routes.complaint_routes as cr
 import services.auth as auth
+import services.sla as sla
 from app import create_app
 
 
@@ -10,6 +11,7 @@ def app(tmp_path, monkeypatch):
     monkeypatch.setattr(cr, "STORE", tmp_path / "store.json")
     monkeypatch.setattr(cr, "UPLOADS", tmp_path / "uploads")
     monkeypatch.setattr(auth, "USERS", tmp_path / "users.json")
+    monkeypatch.setattr(sla, "RULES_FILE", tmp_path / "sla_rules.json")
     app = create_app()
     app.config.update(TESTING=True, SECRET_KEY="test-secret")
     return app
