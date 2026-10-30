@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard - Smart Complaint Management System</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .8rem; margin: 1rem 0; }
+    .kpi { border: 1px solid #ddd; border-radius: 8px; padding: .8rem; }
+    .kpi .v { font-size: 1.8rem; font-weight: 700; } .kpi .l { color: #555; font-size: .9rem; }
+    .filters { display: flex; flex-wrap: wrap; gap: .5rem; align-items: end; }
+    .filters label { display: flex; flex-direction: column; font-size: .85rem; }
+    input, button { padding: .45rem; font-size: .95rem; } button { cursor: pointer; }
+    table { border-collapse: collapse; width: 100%; margin-top: .5rem; } td, th { border: 1px solid #ddd; padding: .35rem .6rem; text-align: left; }
+    .err { color: #b91c1c; } .muted { color: #666; font-size: .85rem; }
+    .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Complaints Dashboard</h1>
+  <div class="filters">
+    <label>From<input id="from" type="date"></label>
+    <label>To<input id="to" type="date"></label>
+    <label>Department<input id="department" placeholder="e.g. Water Department"></label>
+    <label>Agent ID<input id="agent" placeholder="U-..."></label>
+    <button id="apply">Apply</button>
+    <button id="report">Download report (CSV)</button>
+  </div>
+  <p id="msg" class="err"></p>
+  <div class="grid" id="kpis"></div>
+  <div class="cols"><div><h3>By status</h3><table id="by_status"></table></div>
+    <div><h3>By category</h3><table id="by_category"></table></div>
+    <div><h3>By department</h3><table id="by_department"></table></div></div>
+  <p class="muted">Auto-refreshes every 60 seconds. <span id="stamp"></span></p>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const token = localStorage.getItem("scms_token");
+    if (!token) location.href = "/login";
+    const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const qs = () => new URLSearchParams(Object.fromEntries(["from", "to", "department", "agent"]
+      .map((k) => [k, $(k).value.trim()]).filter(([, v]) => v))).toString();
+    const fmt = (v, suffix = "") => (v === null || v === undefined ? "N/A" : v + suffix);
+    const table = (id, obj) => ($(id).innerHTML = Object.entries(obj).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join("") || "<tr><td>No data</td></tr>");
+
+    async function load() {
+      const r = await fetch(`/dashboard/data?${qs()}`, { headers: { Authorization: `Bearer ${token}` } });
+      const d = await r.json();
+      if (!r.ok) { $("msg").textContent = d.error; return; }
+      $("msg").textContent = "";
+      const cards = [["Open", d.open], ["Resolved", d.resolved], ["Overdue", d.overdue],
+        ["Avg resolution", fmt(d.avg_resolution_hours, " h")], ["SLA compliance", fmt(d.sla_compliance_percent, "%")],
+        ["CSAT (1-5)", fmt(d.csat)], ["Total", d.total]];
+      $("kpis").innerHTML = cards.map(([l, v]) => `<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join("");
+      table("by_status", d.by_status); table("by_category", d.by_category); table("by_department", d.by_department);
+      $("stamp").textContent = `Last updated ${new Date(d.generated_at).toLocaleTimeString()}`;
+    }
+    $("apply").onclick = load;
+    $("report").onclick = async () => {
+      const r = await fetch(`/dashboard/report.csv?${qs()}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!r.ok) { $("msg").textContent = (await r.json()).error; return; }
+      const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(await r.blob()), download: "complaints_report.csv" });
+      a.click(); URL.revokeObjectURL(a.href);
+    };
+    load(); setInterval(load, 60000);
+  </script>
+</body>
+</html>
