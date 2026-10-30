@@ -4,6 +4,7 @@ from flask import Flask, render_template
 
 from routes.auth_routes import bp as auth_bp
 from routes.complaint_routes import bp
+from routes.dashboard_routes import bp as dashboard_bp
 from routes.sla_routes import bp as sla_bp, start_monitor
 from services.auth import seed_admin_from_env
 
@@ -14,6 +15,7 @@ def create_app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(bp)
     app.register_blueprint(sla_bp)
+    app.register_blueprint(dashboard_bp)
     seed_admin_from_env()
 
     @app.get("/")
