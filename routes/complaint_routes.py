@@ -8,6 +8,7 @@ from nlp.categorizer import get_categories, suggest_categories
 from services import complaints as schema
 from services.auth import STAFF_ROLES, load_users, login_required, roles_required
 from services import notifications
+from services import resolution
 from services import sla
 from services import status as lifecycle
 from services.routing import route
@@ -115,7 +116,7 @@ def override():
             _save(items)
             if c.get("assigned_to") and c["assigned_to"] != previous_agent:
                 notifications.complaint_assigned(c)
-            return jsonify(c)
+            return jsonify(resolution.for_viewer(g.user, c))
     return jsonify({"error": "Complaint not found"}), 404
 
 
@@ -131,7 +132,7 @@ def list_complaints():
 @bp.get("/complaints/mine")
 @roles_required("citizen")
 def my_complaints():
-    return jsonify([c for c in _load() if c.get("citizen_id") == g.user["id"]])
+    return jsonify([resolution.for_viewer(g.user, c) for c in _load() if c.get("citizen_id") == g.user["id"]])
 
 
 @bp.get("/complaints/<cid>")
@@ -141,7 +142,7 @@ def get_complaint(cid):
         if c["id"] == cid:
             if not _can_view(g.user, c):
                 return jsonify({"error": "You do not have permission to view this complaint"}), 403
-            return jsonify(c)
+            return jsonify(resolution.for_viewer(g.user, c))
     return jsonify({"error": "Complaint not found"}), 404
 
 
@@ -156,10 +157,10 @@ def update_status(cid):
             if not lifecycle.allowed_by(g.user, c, new_status):
                 return jsonify({"error": "You do not have permission to make this change"}), 403
             try:
-                lifecycle.change(c, new_status, g.user["id"], note)
-            except lifecycle.TransitionError as e:
+                resolution.change_status(c, g.user, new_status, note)
+            except (lifecycle.TransitionError, ValueError) as e:
                 return jsonify({"error": str(e)}), 400
             _save(items)
             notifications.status_changed(c, g.user["id"], note)
-            return jsonify(c)
+            return jsonify(resolution.for_viewer(g.user, c))
     return jsonify({"error": "Complaint not found"}), 404
