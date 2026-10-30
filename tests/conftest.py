@@ -2,16 +2,27 @@ import pytest
 
 import routes.complaint_routes as cr
 import services.auth as auth
+import services.notifications as notifications
 import services.sla as sla
 from app import create_app
 
 
 @pytest.fixture
-def app(tmp_path, monkeypatch):
+def outbox(monkeypatch):
+    """Captures email / SMS instead of sending them."""
+    sent = []
+    monkeypatch.setattr(notifications, "send_email", lambda to, subject, body: sent.append(("email", to, subject, body)) or "sent")
+    monkeypatch.setattr(notifications, "send_sms", lambda to, text: sent.append(("sms", to, text)) or "sent")
+    return sent
+
+
+@pytest.fixture
+def app(tmp_path, monkeypatch, outbox):
     monkeypatch.setattr(cr, "STORE", tmp_path / "store.json")
     monkeypatch.setattr(cr, "UPLOADS", tmp_path / "uploads")
     monkeypatch.setattr(auth, "USERS", tmp_path / "users.json")
     monkeypatch.setattr(sla, "RULES_FILE", tmp_path / "sla_rules.json")
+    monkeypatch.setattr(notifications, "STORE", tmp_path / "notifications.json")
     app = create_app()
     app.config.update(TESTING=True, SECRET_KEY="test-secret")
     return app

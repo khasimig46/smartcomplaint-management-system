@@ -7,6 +7,7 @@ from flask import Blueprint, g, jsonify, request
 from nlp.categorizer import get_categories, suggest_categories
 from services import complaints as schema
 from services.auth import STAFF_ROLES, load_users, login_required, roles_required
+from services import notifications
 from services import sla
 from services import status as lifecycle
 from services.routing import route
@@ -88,6 +89,7 @@ def submit():
     sla.assign_deadline(complaint)
     items.append(complaint)
     _save(items)
+    notifications.complaint_submitted(complaint)
     return jsonify(complaint), 201
 
 
@@ -105,11 +107,14 @@ def override():
                 return jsonify({"error": "You do not have permission to do this"}), 403
             c["category"], c["overridden"] = category, True
             others = [o for o in items if o["id"] != cid]
+            previous_agent = c.get("assigned_to")
             if c.get("status", "New") in ("New", "Assigned"):  # re-route only before work starts
                 c.update(route(category, load_users(), others, zone=c.get("zone")))
                 if c["assigned_to"] and c.get("status") == "New":
                     lifecycle.change(c, "Assigned", "system", f"Auto-assigned to {c['assigned_to']}")
             _save(items)
+            if c.get("assigned_to") and c["assigned_to"] != previous_agent:
+                notifications.complaint_assigned(c)
             return jsonify(c)
     return jsonify({"error": "Complaint not found"}), 404
 
@@ -155,5 +160,6 @@ def update_status(cid):
             except lifecycle.TransitionError as e:
                 return jsonify({"error": str(e)}), 400
             _save(items)
+            notifications.status_changed(c, g.user["id"], note)
             return jsonify(c)
     return jsonify({"error": "Complaint not found"}), 404
