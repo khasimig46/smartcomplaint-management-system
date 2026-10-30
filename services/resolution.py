@@ -62,7 +62,7 @@ def for_viewer(user, complaint):
 
 
 def queue(complaints, agent_id, include_done=False, now=None):
-    """Complaints assigned to the agent, most urgent SLA first so overdue ones are on top."""
+    """Complaints assigned to the agent: escalated (priority) first, then most urgent SLA so overdue ones are on top."""
     now = now or sla.now_utc()
     states = ACTIVE_STATES + DONE_STATES if include_done else ACTIVE_STATES
     rows = []
@@ -72,6 +72,6 @@ def queue(complaints, agent_id, include_done=False, now=None):
         due = datetime.fromisoformat(c["sla"]["due_at"]) if c.get("sla") else None
         row = {k: c.get(k) for k in QUEUE_FIELDS}
         row.update(due_at=due.isoformat() if due else None, overdue=sla.is_overdue(c, now),
-                   minutes_left=int((due - now).total_seconds() // 60) if due else None)
-        rows.append(((row["status"] in DONE_STATES, due or NEVER), row))
+                   minutes_left=int((due - now).total_seconds() // 60) if due else None, escalated=bool(c.get("escalated")))
+        rows.append(((row["status"] in DONE_STATES, not row["escalated"], due or NEVER), row))
     return [row for _, row in sorted(rows, key=lambda r: r[0])]

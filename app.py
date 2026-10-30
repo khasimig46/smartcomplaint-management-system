@@ -5,6 +5,7 @@ from flask import Flask, render_template
 from routes.auth_routes import bp as auth_bp
 from routes.complaint_routes import bp
 from routes.dashboard_routes import bp as dashboard_bp
+from routes.escalation_routes import bp as escalation_bp
 from routes.evidence_routes import bp as evidence_bp
 from routes.notification_routes import bp as notifications_bp
 from routes.resolution_routes import bp as resolution_bp
@@ -22,6 +23,7 @@ def create_app():
     app.register_blueprint(evidence_bp)
     app.register_blueprint(notifications_bp)
     app.register_blueprint(resolution_bp)
+    app.register_blueprint(escalation_bp)
     seed_admin_from_env()
 
     @app.get("/")
