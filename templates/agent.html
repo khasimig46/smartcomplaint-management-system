@@ -39,7 +39,7 @@
       const d = await r.json();
       if (!r.ok) { $("msg").textContent = d.error; return; }
       $("queue").innerHTML = d.map((q) => `
-        <tr class="${q.overdue ? "overdue" : ""}" data-id="${esc(q.id)}"><td>${esc(q.id)}</td><td>${esc(q.title)}</td>
+        <tr class="${q.overdue ? "overdue" : ""}" data-id="${esc(q.id)}"><td>${esc(q.id)}${q.escalated ? ` <span class="badge">Priority</span>` : ""}</td><td>${esc(q.title)}</td>
           <td>${esc(q.severity)}</td><td>${esc(q.status)}</td><td>${sla(q)}</td></tr>`).join("")
         || `<tr><td colspan="5">No complaints assigned to you.</td></tr>`;
       document.querySelectorAll("[data-id]").forEach((tr) => (tr.onclick = () => open(tr.dataset.id)));
@@ -57,6 +57,7 @@
         <div class="card"><strong>${esc(c.id)}</strong> &mdash; ${esc(c.title)} <span class="badge">${esc(c.status)}</span>
           <p>${esc(c.description)}</p>
           <span class="muted">${esc(c.category)} &middot; ${esc(c.department)} &middot; Severity: ${esc(c.severity)}</span></div>
+        ${c.escalated ? `<p class="err">Escalated by ${esc(c.escalations.at(-1).by_name)}: ${esc(c.escalations.at(-1).reason)}</p>` : ""}
         ${c.resolution ? `<p class="ok">Resolution: ${esc(c.resolution.notes)}</p>` : ""}
         <h3>Internal notes</h3>${notes || `<p class="muted">No notes yet. Notes are not shown to the citizen.</p>`}
         ${c.status === "Closed" ? "" : `

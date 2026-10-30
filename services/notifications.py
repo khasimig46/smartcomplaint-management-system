@@ -29,6 +29,7 @@ SUBJECTS = {
     "resolution": "Complaint resolved",
     "sla_warning": "SLA deadline approaching",
     "sla_breach": "SLA breached",
+    "escalated": "Complaint escalated",
 }
 log = logging.getLogger("scms.notifications")
 _lock = threading.Lock()
@@ -178,6 +179,20 @@ def status_changed(c, actor_id, note=None):
     if note:
         message += f" Note: {note}"
     notify([u for u in (c.get("citizen_id"), c.get("assigned_to")) if u and u != actor_id], kind, message, c)
+
+
+def complaint_escalated(c):
+    """Tell the citizen, the receiving agent and, if the ticket moved, the previous agent. Citizens never see the reason."""
+    e = c["escalations"][-1]
+    due = c["sla"]["due_at"][:16].replace("T", " ")
+    notify([c["citizen_id"]], "escalated",
+           f"Your complaint {c['id']} ('{c['title']}') has been escalated to {e['to_department']} for priority handling.", c)
+    notify([e["to_agent"]], "escalated",
+           f"Escalated complaint {c['id']} ('{c['title']}') needs priority attention, new deadline {due} UTC. "
+           f"Reason: {e['reason']}", c)
+    if e["from_agent"] and e["from_agent"] != e["to_agent"]:
+        notify([e["from_agent"]], "escalated",
+               f"Complaint {c['id']} was escalated to {e['to_department']} and reassigned. Reason: {e['reason']}", c)
 
 
 def sla_alerts(alerts, complaints):

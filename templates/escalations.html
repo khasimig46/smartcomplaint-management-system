@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Escalations - Smart Complaint Management System</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+    input, select, textarea, button { padding: .45rem; font-size: .95rem; } button { cursor: pointer; } textarea { width: 100%; box-sizing: border-box; font-family: inherit; }
+    table { border-collapse: collapse; width: 100%; margin-top: .5rem; } td, th { border: 1px solid #ddd; padding: .35rem .6rem; text-align: left; }
+    tr.overdue { background: #fee2e2; } .err { color: #b91c1c; } .ok { color: #15803d; font-weight: 600; } .muted { color: #666; font-size: .85rem; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: .8rem 1rem; margin: 1rem 0; } .row { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .5rem; }
+  </style>
+</head>
+<body>
+  <h1>Escalations</h1>
+  <form id="form" class="card">
+    <div class="row"><input id="ticket" placeholder="SCMS-YYYYMMDD-NNNNN" size="24" required>
+      <select id="team"><option value="">Keep current team</option></select></div>
+    <textarea id="reason" rows="2" maxlength="500" placeholder="Reason for escalation, e.g. No response from field team" required></textarea>
+    <p><button type="submit">Escalate</button> <span class="muted">Moves the ticket to the priority queue with a new SLA and notifies the citizen and agents.</span></p>
+    <p id="formMsg"></p>
+  </form>
+  <p id="msg" class="err"></p>
+  <h2>Needs attention</h2>
+  <p class="muted">Open complaints that are overdue, unassigned, or have had no activity for <span id="hours"></span> hours.</p>
+  <table><thead><tr><th>Ticket</th><th>Title</th><th>Status</th><th>Team</th><th>Why</th><th></th></tr></thead><tbody id="stalled"></tbody></table>
+  <h2>Priority queue</h2>
+  <table><thead><tr><th>Ticket</th><th>Title</th><th>Team</th><th>Agent</th><th>Status</th><th>New deadline</th><th>Reason</th></tr></thead><tbody id="priority"></tbody></table>
+  <p class="muted">Refreshes every 60 seconds. <span id="stamp"></span></p>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const token = localStorage.getItem("scms_token");
+    if (!token) location.href = "/login";
+    const H = { Authorization: `Bearer ${token}` };
+    const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const when = (ts) => (ts ? new Date(ts).toLocaleString() : "No SLA");
+    const why = (r, idle) => [r.overdue && "Overdue", r.unassigned && "Unassigned", r.idle_hours >= idle && `Idle ${r.idle_hours} h`].filter(Boolean).join(", ");
+    let teamsLoaded = false;
+
+    async function load() {
+      const r = await fetch("/escalations/data", { headers: H });
+      const d = await r.json();
+      if (!r.ok) { $("msg").textContent = d.error; return; }
+      $("msg").textContent = ""; $("hours").textContent = d.stalled_hours;
+      if (!teamsLoaded) { $("team").innerHTML += d.teams.map((t) => `<option>${esc(t)}</option>`).join(""); teamsLoaded = true; }
+      $("stalled").innerHTML = d.stalled.map((s) => `
+        <tr class="${s.overdue ? "overdue" : ""}"><td>${esc(s.id)}</td><td>${esc(s.title)}</td><td>${esc(s.status)}</td>
+          <td>${esc(s.department)}</td><td>${why(s, d.stalled_hours)}</td><td><button data-id="${esc(s.id)}" data-team="${esc(s.department)}">Escalate</button></td></tr>`).join("")
+        || `<tr><td colspan="6">Nothing is stalled right now.</td></tr>`;
+      $("priority").innerHTML = d.priority_queue.map((p) => `
+        <tr class="${p.overdue ? "overdue" : ""}"><td>${esc(p.id)}</td><td>${esc(p.title)}</td><td>${esc(p.department)}</td>
+          <td>${esc(p.assigned_to)}</td><td>${esc(p.status)}</td><td>${when(p.due_at)}</td><td>${esc(p.last_reason)}</td></tr>`).join("")
+        || `<tr><td colspan="7">No escalated complaints are open.</td></tr>`;
+      document.querySelectorAll("[data-id]").forEach((b) => (b.onclick = () => {
+        $("ticket").value = b.dataset.id; $("team").value = b.dataset.team; $("reason").focus();
+      }));
+      $("stamp").textContent = `Last updated ${new Date().toLocaleTimeString()}`;
+    }
+
+    $("form").onsubmit = async (e) => {
+      e.preventDefault();
+      const r = await fetch(`/complaints/${encodeURIComponent($("ticket").value.trim())}/escalate`, {
+        method: "POST", headers: { ...H, "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: $("reason").value, department: $("team").value || null }) });
+      const d = await r.json();
+      $("formMsg").textContent = r.ok ? `${d.id} escalated to ${d.department}, new deadline ${when(d.sla.due_at)}.` : d.error;
+      $("formMsg").className = r.ok ? "ok" : "err";
+      if (r.ok) { $("form").reset(); load(); }
+    };
+    load(); setInterval(load, 60000);
+  </script>
+</body>
+</html>

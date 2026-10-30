@@ -71,7 +71,7 @@
       if (!r.ok) { $("msg").textContent = c.error; return; }
       $("out").innerHTML = `
         <div class="card">
-          <strong>${esc(c.id)}</strong> &mdash; ${esc(c.title)} <span class="badge">${esc(c.status)}</span><br>
+          <strong>${esc(c.id)}</strong> &mdash; ${esc(c.title)} <span class="badge">${esc(c.status)}</span>${c.escalated ? ` <span class="badge">Escalated</span>` : ""}<br>
           <span class="when">${esc(c.category)} &middot; ${esc(c.department)} &middot; Severity: ${esc(c.severity)}</span>
         </div>
         <h3>Timeline</h3>
