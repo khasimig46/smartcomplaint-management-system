@@ -1,7 +1,8 @@
 """Issue #9: SLA rules, deadlines, warning/breach alerts and compliance tracking."""
-import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+from services import storage
 
 RULES_FILE = Path(__file__).resolve().parent.parent / "data" / "sla_rules.json"
 DEFAULT_RULES = {"Critical": 4, "High": 24, "Medium": 72, "Low": 120}   # resolution hours by severity
@@ -20,11 +21,11 @@ def _parse(ts):
 # ---------- rules ----------
 def load_rules():
     rules = dict(DEFAULT_RULES)
-    if RULES_FILE.exists():
-        rules.update(json.loads(RULES_FILE.read_text()))
+    rules.update(storage.read_json(RULES_FILE, {}))
     return rules
 
 
+@storage.synchronized
 def save_rules(updates):
     rules = load_rules()
     for severity, hours in updates.items():
@@ -33,8 +34,7 @@ def save_rules(updates):
         if not isinstance(hours, (int, float)) or isinstance(hours, bool) or hours <= 0:
             raise ValueError(f"Hours for {severity} must be a positive number")
         rules[severity] = hours
-    RULES_FILE.parent.mkdir(parents=True, exist_ok=True)
-    RULES_FILE.write_text(json.dumps(rules, indent=2))
+    storage.write_json(RULES_FILE, rules)
     return rules
 
 

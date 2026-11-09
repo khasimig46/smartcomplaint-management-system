@@ -1,7 +1,7 @@
 from flask import Blueprint, g, jsonify, render_template, request
 
 import routes.complaint_routes as cr
-from services import resolution
+from services import resolution, storage
 from services.auth import STAFF_ROLES, roles_required
 
 bp = Blueprint("resolution", __name__)
@@ -25,6 +25,7 @@ def work_queue():
 
 @bp.post("/complaints/<cid>/notes")
 @roles_required(*STAFF_ROLES)
+@storage.synchronized
 def add_note(cid):
     items = cr._load()
     c = _find(items, cid)
