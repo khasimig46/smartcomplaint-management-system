@@ -1,7 +1,7 @@
 from flask import Blueprint, g, jsonify, render_template, request
 
 import routes.complaint_routes as cr
-from services import escalation, notifications
+from services import escalation, notifications, storage
 from services.auth import load_users, roles_required
 
 bp = Blueprint("escalation", __name__)
@@ -22,6 +22,7 @@ def data():
 
 @bp.post("/complaints/<cid>/escalate")
 @roles_required("supervisor", "admin")
+@storage.synchronized
 def escalate(cid):
     """JSON {reason, department?}; department defaults to the complaint's current team."""
     d = request.get_json(silent=True) or {}

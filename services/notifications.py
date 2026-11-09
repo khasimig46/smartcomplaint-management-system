@@ -4,19 +4,17 @@ Email is sent over SMTP when SMTP_HOST is set, SMS through Twilio when TWILIO_AC
 TWILIO_AUTH_TOKEN and TWILIO_FROM are set. Otherwise the message is written to the log.
 """
 import base64
-import json
 import logging
 import os
 import re
 import smtplib
-import threading
 import uuid
 from datetime import datetime, timezone
 from email.message import EmailMessage
 from pathlib import Path
 from urllib import parse, request as urlrequest
 
-from services import auth
+from services import auth, storage
 
 STORE = Path(__file__).resolve().parent.parent / "data" / "notifications.json"
 PHONE_RE = re.compile(r"^\+[1-9]\d{7,14}$")   # E.164, e.g. +919876543210
@@ -32,16 +30,15 @@ SUBJECTS = {
     "escalated": "Complaint escalated",
 }
 log = logging.getLogger("scms.notifications")
-_lock = threading.Lock()
+_lock = storage.LOCK
 
 
 def _load():
-    return json.loads(STORE.read_text()) if STORE.exists() else []
+    return storage.read_json(STORE, [])
 
 
 def _save(items):
-    STORE.parent.mkdir(parents=True, exist_ok=True)
-    STORE.write_text(json.dumps(items, indent=2))
+    storage.write_json(STORE, items)
 
 
 # ---------- providers ----------
@@ -90,6 +87,7 @@ def preferences(user):
     return {"email": p.get("email", True), "sms": p.get("sms", False), "phone": user.get("phone")}
 
 
+@storage.synchronized
 def update_preferences(user_id, data):
     users = auth.load_users()
     user = next(u for u in users if u["id"] == user_id)
