@@ -9,6 +9,10 @@ S = "tests/test_system_validation.py::"
 # Sprint 3 Task 1 (concurrency-safe storage, PR #25) is merged when services/storage.py exists.
 SPRINT3 = (Path(__file__).resolve().parent.parent / "services" / "storage.py").exists()
 ST = "tests/test_storage.py::"
+# Sprint 3 Task 2 (rating, feedback, auto-close, PR #37) is merged when services/feedback.py exists.
+TASK2 = (Path(__file__).resolve().parent.parent / "services" / "feedback.py").exists()
+FB = "tests/test_feedback.py::"
+SPRINT3_LABEL = "Sprint 3 Tasks 1-2" if TASK2 else "Sprint 3 Task 1"
 
 CASES = [
     dict(id="TC01", req="FR-001", priority="High", scenario="Submit complaint with valid details",
@@ -292,6 +296,32 @@ CASES = [
                 S + "test_sv03_nlp_suggestions_and_override"],
          actual="Department changed to Water Department; new agent notified."),
 ]
+
+if TASK2:   # FR-008 built in Sprint 3 Task 2: TC14 / TC15 become automated cases
+    _by_id = {c["id"]: c for c in CASES}
+    _by_id["TC14"].update(
+        fixed_status=None,
+        change="Implemented in Sprint 3 Task 2: rating 1-5 with optional comment (max 500) closes the complaint; "
+               "window is 7 days from the latest resolution.",
+        tests=[FB + t for t in ("test_rating_saves_feedback_and_closes_complaint",
+                                "test_rating_without_comment_is_accepted", "test_invalid_ratings_are_rejected",
+                                "test_comment_limit_is_500_characters", "test_only_the_owner_can_rate",
+                                "test_can_rate_only_once", "test_rating_after_the_7_day_window_is_rejected",
+                                "test_dashboard_shows_csat_and_trend_after_rating")],
+        actual="Rating 4 and comment saved, complaint Closed by the citizen, CSAT 4.0; ratings 0, 6, 4.5 and text, "
+               "non-owners, second ratings and expired windows rejected.")
+    _by_id["TC15"].update(
+        fixed_status=None,
+        change="Implemented in Sprint 3 Task 2: the SLA monitor pass closes unrated resolutions after 7 days; "
+               "a reopened complaint gets a new window.",
+        tests=[FB + t for t in ("test_unrated_resolution_auto_closes_after_7_days",
+                                "test_auto_close_leaves_recent_rated_and_reopened_complaints_alone",
+                                "test_reopened_complaint_gets_a_new_window",
+                                "test_window_counts_from_the_latest_resolution")],
+        actual="Resolved 7+ days ago and unrated: Closed by 'system' and citizen notified; recent, rated and "
+               "reopened complaints left alone.")
+    _by_id["TC18"].update(change="CSAT and the CSAT trend (average rating per day) fill in once ratings exist "
+                                 "(Sprint 3 Task 2).")
 
 SV_CASES = [
     ("SV-01", "test_sv01_complaint_end_to_end_happy_path", "Full lifecycle: submit with image + GPS, auto-route, "

@@ -34,7 +34,7 @@ from reportlab.platypus import KeepTogether, PageBreak, Paragraph, SimpleDocTemp
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from test_cases import CASES, SPRINT3, SV_CASES  # noqa: E402
+from test_cases import CASES, SPRINT3, SPRINT3_LABEL, SV_CASES, TASK2  # noqa: E402
 
 DOCS, RAW = ROOT / "docs", ROOT / "docs" / "reports"
 PROJECT = "Smart Complaint Management System"
@@ -184,7 +184,7 @@ def unit_report(junit, meta):
                "providers are replaced by an in-memory outbox, so no test depends on another or on the network."),
              P("2. Scope and approach", "h1"),
              P("These are the module-level tests for each feature built in Sprints 1 and 2"
-               + (" and Sprint 3 Task 1" if SPRINT3 else "") + " (one test file per GitHub "
+               + (f" and {SPRINT3_LABEL}" if SPRINT3 else "") + " (one test file per GitHub "
                "issue). They call the service functions directly, or a single API endpoint through Flask's test "
                "client, and check one behaviour each. End-to-end flows across modules are reported separately in "
                "the System Validation Report. The suite also runs automatically in GitHub Actions on every push and "
@@ -243,7 +243,8 @@ def coverage_reports(cov, meta):
         s += [P("3. Analysis of uncovered code", "h1")] + [P(f"&bull; {x}") for x in STMT_NOTES]
         s += [P("4. Limitations of this metric", "h1"),
               P("Statement coverage shows which lines ran, not whether their results were checked; it is backed here "
-                "by assertions in every test. It cannot show missing features (TC06, TC14, TC15, TC19 are not "
+                "by assertions in every test. It cannot show missing features ("
+                + ("TC06 and TC19" if TASK2 else "TC06, TC14, TC15, TC19") + " are not "
                 "implemented, so there is no code to cover), and it says nothing about the templates and JavaScript, "
                 "which are exercised only in manual browser testing. Branch coverage, in the companion report, is "
                 "the stricter measure."),
@@ -404,9 +405,12 @@ def system_report(junit, meta, latency):
                    "500-user load test. " if SPRINT3 else
                    "The system is not yet release-ready for multi-user load: DEF-01 must be merged before "
                    "NFR-001 is load-tested. ")
-                + "FR-008 (ratings, auto-close) "
-                "and the FR-012 immutable audit log are not implemented and are carried into Sprint 3 together "
-                "with the 70% NLP threshold and per-category SLA rules.")]
+                + ("FR-008 (ratings, auto-close) was built in Sprint 3 Task 2. The FR-012 immutable audit log "
+                   "is not implemented and stays in Sprint 3 together "
+                   if TASK2 else
+                   "FR-008 (ratings, auto-close) and the FR-012 immutable audit log are not implemented and are "
+                   "carried into Sprint 3 together ")
+                + "with the 70% NLP threshold and per-category SLA rules.")]
         return s
     meta_commit = dict(meta).get("Commit tested", "")
     build(DOCS / "System_Validation_Report.pdf", "System Validation Report", "Software Engineering Mini-Project - Part 3",
@@ -424,10 +428,13 @@ REQ_MATRIX = [
     ("FR-005 Lifecycle", ["TC10", "TC23"], "All transitions logged with time and actor."),
     ("FR-006 SLA", ["TC11", "TC12", "TC27"], "Severity-based rules; per-category rules pending."),
     ("FR-007 Notifications", ["TC13", "TC25"], "In-app, email, opt-in SMS."),
-    ("FR-008 Rating / auto-close", ["TC14", "TC15"], "Not built; Sprint 3 Task 2."),
+    ("FR-008 Rating / auto-close", ["TC14", "TC15"],
+     "Built in Sprint 3 Task 2: 1-5 rating closes; unrated auto-close after 7 days." if TASK2 else
+     "Not built; Sprint 3 Task 2."),
     ("FR-009 Escalation", ["TC16"], "Priority queue and SLA reset."),
     ("FR-010 RBAC", ["TC17", "TC26"], "45 role/endpoint checks; user update/deactivate pending."),
-    ("FR-011 Dashboard", ["TC18", "TC24"], "KPIs, filters, CSV, 60 s refresh; CSAT N/A."),
+    ("FR-011 Dashboard", ["TC18", "TC24"], "KPIs, filters, CSV, 60 s refresh; "
+     + ("CSAT and CSAT trend from ratings." if TASK2 else "CSAT N/A.")),
     ("FR-012 Audit log", ["TC19"], "Actor + time recorded, not tamper-proof; Sprint 3 Task 3."),
     ("FR-013 Resolution", ["TC22"], "Resolution notes required; citizen notified."),
     ("FR-014 Notes / evidence", ["TC21", "TC22"], "10 MB limit, content-type check, staff-only notes."),
@@ -445,7 +452,9 @@ DEFECTS = [
         "in tests/test_storage.py pass." if SPRINT3 else
         "Fix exists on branch feature/concurrency-safe-storage (Sprint 3 Task 1): re-running the same 20-request "
         "check there gave 20/20 unique IDs, all stored."), "Fixed" if SPRINT3 else "Fixed on branch"),
-    ("DEF-02", "Medium", "FR-008 rating, feedback and 7-day auto-close not implemented; dashboard CSAT always N/A.", "Open"),
+    ("DEF-02", "Medium", "FR-008 rating, feedback and 7-day auto-close not implemented; dashboard CSAT always N/A."
+     + (" Fixed in Sprint 3 Task 2 (PR #37); TC14 and TC15 now automated." if TASK2 else ""),
+     "Fixed" if TASK2 else "Open"),
     ("DEF-03", "Medium", "FR-012: no immutable audit log; history is stored inside the editable complaint record.", "Open"),
     ("DEF-04", "Low", "FR-002: no 70% confidence threshold or low-confidence prompt.", "Open"),
     ("DEF-05", "Low", "FR-006: SLA hours depend on severity only, not category and severity.", "Open"),
@@ -497,7 +506,7 @@ def test_case_doc(junit, meta, statuses):
         rows = [["Requirement", "Test cases"]] + [[r, ", ".join(t) or "-"] for r, t, *_ in REQ_MATRIX]
         s.append(table(rows, [w * .3, w * .7]))
         return s
-    build(DOCS / "Test_Cases_Updated.pdf", "Test Case Document (Updated)", "Version 2.1 - after Sprint 3 Task 1" if SPRINT3 else "Version 2.0 - after Sprint 2", meta,
+    build(DOCS / "Test_Cases_Updated.pdf", "Test Case Document (Updated)", f"Version 2.1 - after {SPRINT3_LABEL}" if SPRINT3 else "Version 2.0 - after Sprint 2", meta,
           story, landscape_mode=True)
 
 
