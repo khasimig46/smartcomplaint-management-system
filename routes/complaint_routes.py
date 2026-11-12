@@ -5,6 +5,7 @@ from flask import Blueprint, g, jsonify, request
 
 from nlp.categorizer import get_categories, suggest_categories
 from services import complaints as schema
+from services import feedback
 from services.auth import STAFF_ROLES, load_users, login_required, roles_required
 from services import notifications, storage
 from services import resolution
@@ -163,5 +164,28 @@ def update_status(cid):
                 return jsonify({"error": str(e)}), 400
             _save(items)
             notifications.status_changed(c, g.user["id"], note)
+            return jsonify(resolution.for_viewer(g.user, c))
+    return jsonify({"error": "Complaint not found"}), 404
+
+
+@bp.post("/complaints/<cid>/feedback")
+@roles_required("citizen")
+@storage.synchronized
+def give_feedback(cid):
+    """Sprint 3 Task 2 (FR-008, UC-03): the owner rates a Resolved complaint 1-5 within 7 days, which closes it."""
+    data = request.get_json(silent=True) or {}
+    items = _load()
+    for c in items:
+        if c["id"] == cid:
+            try:
+                feedback.rate(c, g.user, data.get("rating"), data.get("comment"))
+            except PermissionError as e:
+                return jsonify({"error": str(e)}), 403
+            except ValueError as e:
+                return jsonify({"error": str(e)}), 400
+            except feedback.FeedbackError as e:
+                return jsonify({"error": str(e)}), 409
+            _save(items)
+            notifications.status_changed(c, g.user["id"], c["history"][-1]["note"])   # agent sees the rating
             return jsonify(resolution.for_viewer(g.user, c))
     return jsonify({"error": "Complaint not found"}), 404

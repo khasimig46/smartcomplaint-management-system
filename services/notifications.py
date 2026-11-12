@@ -170,8 +170,9 @@ def status_changed(c, actor_id, note=None):
     """Tell the citizen and the assigned agent (except whoever made the change)."""
     if c["status"] == "Resolved":
         kind = "resolution"
-        message = (f"Complaint {c['id']} ('{c['title']}') has been resolved. "
-                   "Please close it if fixed, or reopen it from the tracking page.")
+        message = (f"Complaint {c['id']} ('{c['title']}') has been resolved. Please rate the resolution (1-5) "
+                   "within 7 days on the tracking page, or reopen it if the problem is not fixed. "
+                   "Unrated complaints are closed automatically after 7 days.")
     else:
         kind, message = "status_update", f"Complaint {c['id']} ('{c['title']}') is now {c['status']}."
     if note:

@@ -12,6 +12,10 @@
     ol.timeline li::before { content: ""; position: absolute; left: -1.55rem; top: .3rem; width: .8rem; height: .8rem; border-radius: 50%; background: #2563eb; }
     .when { color: #555; font-size: .9rem; } .card { border: 1px solid #ddd; border-radius: 8px; padding: .8rem 1rem; margin: 1rem 0; }
     .ok { color: #15803d; font-weight: 600; } ul.files { padding-left: 1.2rem; } ul.files li { margin: .3rem 0; }
+    .stars { display: inline-flex; flex-direction: row-reverse; gap: .1rem; } .stars input { display: none; }
+    .stars label { font-size: 1.8rem; color: #ccc; cursor: pointer; } .stars input:checked ~ label,
+    .stars label:hover, .stars label:hover ~ label { color: #f59e0b; }
+    textarea { width: 100%; font: inherit; padding: .5rem; box-sizing: border-box; } .row { margin: .5rem 0; }
   </style>
 </head>
 <body>
@@ -64,6 +68,54 @@
       };
     }
 
+    const WINDOW_DAYS = 7;
+    function feedbackHtml(c) {   // Sprint 3 Task 2: rate (closes), close without rating, or reopen
+      if (c.feedback) return `<h3>Your feedback</h3><p>${"&#9733;".repeat(c.feedback.rating)}${"&#9734;".repeat(5 - c.feedback.rating)}
+          ${c.feedback.comment ? ` &mdash; ${esc(c.feedback.comment)}` : ""}</p>`;
+      if (c.auto_closed) return `<p class="when">Closed automatically: no feedback was given within ${WINDOW_DAYS} days.</p>`;
+      if (!user || user.role !== "citizen" || c.status !== "Resolved") return "";
+      const resolved = (c.history || []).filter((h) => h.status === "Resolved").pop();
+      const ends = new Date(new Date(resolved.at).getTime() + WINDOW_DAYS * 864e5);
+      return `<h3>Rate the resolution</h3>
+        ${c.resolution ? `<p><strong>Resolution:</strong> ${esc(c.resolution.notes)}</p>` : ""}
+        <form id="fbForm">
+          <div class="stars">${[5, 4, 3, 2, 1].map((n) => `<input type="radio" name="rating" id="r${n}" value="${n}">
+            <label for="r${n}" title="${n} star${n > 1 ? "s" : ""}">&#9733;</label>`).join("")}</div>
+          <div class="row"><textarea id="fbComment" maxlength="500" rows="3" placeholder="Optional comment (max 500 characters)"></textarea></div>
+          <button type="submit">Submit rating and close</button>
+          <span class="when">Rate by ${ends.toLocaleString()}; after that it closes automatically.</span>
+        </form>
+        <p class="row"><button id="closeBtn" type="button">Close without rating</button>
+          <button id="reopenBtn" type="button">Reopen (not fixed)</button></p>
+        <p id="fbMsg"></p>`;
+    }
+
+    function bindFeedback(c) {
+      if (!$("fbForm")) return;
+      const fail = (m) => { $("fbMsg").textContent = m; $("fbMsg").className = "err"; };
+      $("fbForm").onsubmit = async (e) => {
+        e.preventDefault();
+        const picked = document.querySelector("input[name=rating]:checked");
+        if (!picked) return fail("Choose a rating from 1 to 5 stars.");
+        const r = await fetch(`/complaints/${encodeURIComponent(c.id)}/feedback`, { method: "POST",
+          headers: { ...H, "Content-Type": "application/json" },
+          body: JSON.stringify({ rating: Number(picked.value), comment: $("fbComment").value }) });
+        if (!r.ok) return fail((await r.json()).error);
+        await track(c.id); loadMine();
+      };
+      const move = async (status, note) => {
+        const r = await fetch(`/complaints/${encodeURIComponent(c.id)}/status`, { method: "PATCH",
+          headers: { ...H, "Content-Type": "application/json" }, body: JSON.stringify({ status, note }) });
+        if (!r.ok) return fail((await r.json()).error);
+        await track(c.id); loadMine();
+      };
+      $("closeBtn").onclick = () => move("Closed", "Closed by citizen without rating");
+      $("reopenBtn").onclick = () => {
+        const why = prompt("What is still wrong?");
+        if (why !== null) move("In Progress", why.trim() || "Reopened by citizen");
+      };
+    }
+
     async function track(id) {
       $("msg").textContent = ""; $("out").innerHTML = "";
       const r = await fetch(`/complaints/${encodeURIComponent(id)}`, { headers: H });
@@ -79,19 +131,22 @@
           <li><strong>${esc(h.status)}</strong>${h.note ? ` &mdash; ${esc(h.note)}` : ""}<br>
               <span class="when">${new Date(h.at).toLocaleString()} &middot; by ${esc(h.by)}</span></li>`).join("")}
         </ol>
+        ${feedbackHtml(c)}
         ${evidenceHtml(c)}`;
+      bindFeedback(c);
       bindEvidence(c);
     }
 
     $("go").onclick = () => track($("ticket").value.trim());
-    (async () => {  // citizens: list their complaints for one-click tracking
+    async function loadMine() {  // citizens: list their complaints for one-click tracking
       const r = await fetch("/complaints/mine", { headers: H });
       if (!r.ok) return;
       const items = await r.json();
       if (items.length) $("mine").innerHTML = "<h3>My complaints</h3>" + items.map((c) =>
         `<div><a href="#" data-id="${esc(c.id)}">${esc(c.id)}</a> &mdash; ${esc(c.title)} <span class="badge">${esc(c.status)}</span></div>`).join("");
       document.querySelectorAll("[data-id]").forEach((a) => (a.onclick = (e) => { e.preventDefault(); track(a.dataset.id); }));
-    })();
+    }
+    loadMine();
   </script>
 </body>
 </html>
