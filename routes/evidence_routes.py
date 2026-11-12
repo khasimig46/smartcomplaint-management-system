@@ -1,7 +1,7 @@
 from flask import Blueprint, g, jsonify, request, send_file
 
 import routes.complaint_routes as cr
-from services import evidence
+from services import evidence, storage
 from services.auth import STAFF_ROLES, login_required, roles_required
 
 bp = Blueprint("evidence", __name__)
@@ -13,6 +13,7 @@ def _find(items, cid):
 
 @bp.post("/complaints/<cid>/evidence")
 @roles_required(*STAFF_ROLES)
+@storage.synchronized
 def upload(cid):
     """multipart/form-data with one or more `files`."""
     items = cr._load()

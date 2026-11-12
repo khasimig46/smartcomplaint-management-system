@@ -1,5 +1,4 @@
 """Issue #1: User accounts, bcrypt password hashing, JWT tokens and RBAC."""
-import json
 import os
 import re
 import uuid
@@ -10,6 +9,8 @@ from pathlib import Path
 import bcrypt
 import jwt
 from flask import current_app, g, jsonify, request
+
+from services import storage
 
 ROLES = ("citizen", "agent", "supervisor", "admin")
 STAFF_ROLES = ("agent", "supervisor", "admin")
@@ -26,12 +27,11 @@ class AuthError(Exception):
 
 # ---------- storage (User schema) ----------
 def load_users():
-    return json.loads(USERS.read_text()) if USERS.exists() else []
+    return storage.read_json(USERS, [])
 
 
 def save_users(users):
-    USERS.parent.mkdir(parents=True, exist_ok=True)
-    USERS.write_text(json.dumps(users, indent=2))
+    storage.write_json(USERS, users)
 
 
 def public(user):
@@ -46,6 +46,7 @@ def find_user(user_id=None, email=None):
 
 
 # ---------- registration / login ----------
+@storage.synchronized   # the duplicate-email check and the save must not interleave
 def create_user(name, email, password, role="citizen", department=None, zone=None):
     name, email = (name or "").strip(), (email or "").strip().lower()
     if not name:

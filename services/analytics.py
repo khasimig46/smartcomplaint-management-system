@@ -2,7 +2,7 @@
 from collections import Counter
 from datetime import datetime
 
-from services import sla
+from services import feedback, sla
 
 OPEN_STATES = {"New", "Assigned", "In Progress", "Pending Info"}
 DONE_STATES = {"Resolved", "Closed"}
@@ -40,6 +40,7 @@ def kpis(complaints, now=None):
         "avg_resolution_hours": round(sum(durations) / len(durations), 1) if durations else None,
         "sla_compliance_percent": sla.compliance(complaints),
         "csat": round(sum(ratings) / len(ratings), 2) if ratings else None,   # average 1-5 rating
+        "csat_trend": feedback.csat_trend(complaints),                        # average rating per day (FR-011)
         "by_status": dict(Counter(c.get("status", "New") for c in complaints)),
         "by_category": dict(Counter(c.get("category") for c in complaints)),
         "by_department": dict(Counter(c.get("department") for c in complaints)),

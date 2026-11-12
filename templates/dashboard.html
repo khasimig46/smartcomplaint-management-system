@@ -30,7 +30,8 @@
   <div class="grid" id="kpis"></div>
   <div class="cols"><div><h3>By status</h3><table id="by_status"></table></div>
     <div><h3>By category</h3><table id="by_category"></table></div>
-    <div><h3>By department</h3><table id="by_department"></table></div></div>
+    <div><h3>By department</h3><table id="by_department"></table></div>
+    <div><h3>CSAT trend (avg rating per day)</h3><table id="csat_trend"></table></div></div>
   <p class="muted">Auto-refreshes every 60 seconds. <span id="stamp"></span></p>
   <script>
     const $ = (id) => document.getElementById(id);
@@ -52,6 +53,9 @@
         ["CSAT (1-5)", fmt(d.csat)], ["Total", d.total]];
       $("kpis").innerHTML = cards.map(([l, v]) => `<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join("");
       table("by_status", d.by_status); table("by_category", d.by_category); table("by_department", d.by_department);
+      $("csat_trend").innerHTML = (d.csat_trend || []).map((t) => `<tr><td>${esc(t.date)}</td>
+        <td>${"&#9733;".repeat(Math.round(t.average))} ${t.average}</td><td class="muted">${t.count} rating${t.count > 1 ? "s" : ""}</td></tr>`).join("")
+        || "<tr><td>No ratings yet</td></tr>";
       $("stamp").textContent = `Last updated ${new Date(d.generated_at).toLocaleTimeString()}`;
     }
     $("apply").onclick = load;
