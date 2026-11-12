@@ -3,7 +3,12 @@
 `tests` lists the automated tests that execute the case; the report generator marks a case Pass only if
 every listed test passed in the latest run. Cases with `fixed_status` are not automated and keep that status.
 """
+from pathlib import Path
+
 S = "tests/test_system_validation.py::"
+# Sprint 3 Task 1 (concurrency-safe storage, PR #25) is merged when services/storage.py exists.
+SPRINT3 = (Path(__file__).resolve().parent.parent / "services" / "storage.py").exists()
+ST = "tests/test_storage.py::"
 
 CASES = [
     dict(id="TC01", req="FR-001", priority="High", scenario="Submit complaint with valid details",
@@ -72,14 +77,20 @@ CASES = [
          steps="1. Submit a valid complaint. 2. Note the ticket ID. 3. Submit again and compare. 4. Repeat on a new day.",
          data="Many sequential submissions; a submission on the next day.",
          expected="Each submission gets a unique SCMS-YYYYMMDD-NNNNN ID; sequence restarts each day.",
-         change="Sequence restart per day added to the expected result. Concurrent submission is covered by "
-                "Sprint 3 UT-04 (see defect DEF-01 in the System Validation Report).",
+         change=("Sequence restart per day added to the expected result. Concurrent uniqueness added in Sprint 3 "
+                 "(UT-04): DEF-01 found in testing, fixed by Sprint 3 Task 1." if SPRINT3 else
+                 "Sequence restart per day added to the expected result. Concurrent submission is covered by "
+                 "Sprint 3 UT-04 (see defect DEF-01 in the System Validation Report)."),
          tests=["tests/test_ticket_id.py::test_format_is_date_based",
                 "tests/test_ticket_id.py::test_sequence_increments_within_a_day",
                 "tests/test_ticket_id.py::test_sequence_restarts_on_new_day",
                 "tests/test_ticket_id.py::test_no_duplicates_over_many_complaints",
-                "tests/test_ticket_id.py::test_submitted_complaint_gets_ticket_id"],
-         actual="Sequential IDs unique and correctly formatted; sequence restarts on a new day."),
+                "tests/test_ticket_id.py::test_submitted_complaint_gets_ticket_id"]
+               + ([ST + "test_UT04_simultaneous_submissions_get_unique_ticket_ids",
+                   ST + "test_UT05_simultaneous_submissions_are_all_saved_with_all_fields"] if SPRINT3 else []),
+         actual=("Sequential and simultaneous IDs unique and correctly formatted; sequence restarts on a new day; "
+                 "every simultaneous submission saved." if SPRINT3 else
+                 "Sequential IDs unique and correctly formatted; sequence restarts on a new day.")),
     dict(id="TC08", req="FR-004", priority="High", scenario="Route complaint to department and agent",
          pre="Agents exist in several departments and zones.",
          steps="1. Submit with a known category and zone. 2. Let routing run. 3. Inspect department and agent.",

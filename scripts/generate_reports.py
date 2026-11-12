@@ -34,7 +34,7 @@ from reportlab.platypus import KeepTogether, PageBreak, Paragraph, SimpleDocTemp
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from test_cases import CASES, SV_CASES  # noqa: E402
+from test_cases import CASES, SPRINT3, SV_CASES  # noqa: E402
 
 DOCS, RAW = ROOT / "docs", ROOT / "docs" / "reports"
 PROJECT = "Smart Complaint Management System"
@@ -88,7 +88,7 @@ HEAD_BG = colors.HexColor("#E6E6E6")
 STATUS_BG = {"Pass": colors.HexColor("#DFF0D8"), "Fail": colors.HexColor("#F2DEDE"),
              "Partial": colors.HexColor("#FCF8E3"), "Not Implemented": colors.HexColor("#F2DEDE"),
              "Not Executed": colors.HexColor("#EEEEEE"), "Open": colors.HexColor("#F2DEDE"),
-             "Fixed on branch": colors.HexColor("#FCF8E3"), "Deviation": colors.HexColor("#FCF8E3")}
+             "Fixed on branch": colors.HexColor("#FCF8E3"), "Fixed": colors.HexColor("#DFF0D8"), "Deviation": colors.HexColor("#FCF8E3")}
 
 ST = {
     "title": ParagraphStyle("t", fontName=BOLD, fontSize=20, leading=24, alignment=TA_CENTER, textColor=INK),
@@ -183,7 +183,8 @@ def unit_report(junit, meta):
                "pytest and run in isolation: every test gets a fresh temporary data directory, and email/SMS "
                "providers are replaced by an in-memory outbox, so no test depends on another or on the network."),
              P("2. Scope and approach", "h1"),
-             P("These are the module-level tests for each feature built in Sprints 1 and 2 (one test file per GitHub "
+             P("These are the module-level tests for each feature built in Sprints 1 and 2"
+               + (" and Sprint 3 Task 1" if SPRINT3 else "") + " (one test file per GitHub "
                "issue). They call the service functions directly, or a single API endpoint through Flask's test "
                "client, and check one behaviour each. End-to-end flows across modules are reported separately in "
                "the System Validation Report. The suite also runs automatically in GitHub Actions on every push and "
@@ -275,11 +276,13 @@ def coverage_reports(cov, meta):
         s.append(table(rows, [w * .27, w * .1, w * .09, w * .09, w * .1, w * .35]))
         s += [P("Files with no decision points (for example routes/dashboard_routes.py) are omitted from the table "
                 "and are fully covered.", "small"),
-              P("3. Analysis of untaken branches", "h1")] + [P(f"&bull; {x}") for x in BRANCH_NOTES]
+              P("3. Analysis of untaken branches", "h1")] + [P("&bull; " + x.format(**{Path(f).stem: v["summary"]["missing_branches"] for f, v in cov["files"].items()
+                                                    if f.startswith(("routes", "services"))})) for x in BRANCH_NOTES]
         s += [P("4. Limitations", "h1"),
               P("Branch coverage does not show combinations of conditions (MC/DC) or concurrency. For example, every "
-                "branch of the submission handler is covered, yet concurrent submissions on main still corrupt the "
-                "data file (defect DEF-01 in the System Validation Report). Branch coverage is a floor, not proof of "
+                "branch of the submission handler was covered while concurrent submissions still corrupted the "
+                "data file (defect DEF-01 in the System Validation Report, found by a separate concurrency check"
+                + (" and fixed in Sprint 3" if SPRINT3 else "") + "). Branch coverage is a floor, not proof of "
                 "correctness."),
               P("5. Evidence", "h1"),
               P("docs/reports/coverage-html/index.html marks partial branches in yellow; coverage.xml carries the "
@@ -326,10 +329,10 @@ STMT_NOTES = [
     "covered.",
 ]
 BRANCH_NOTES = [
-    "<b>routes/complaint_routes.py</b> (9 missed arcs): the lookup loops never fall through to 'not found' in tests, "
+    "<b>routes/complaint_routes.py</b> ({complaint_routes} missed arcs): the lookup loops never fall through to 'not found' in tests, "
     "and category override is never tried on a complaint whose work has started (status past Assigned), so the "
     "'do not re-route' outcome (line 112 -> 116) is untested.",
-    "<b>services/auth.py</b> (6): the false outcomes of create_user's validation checks listed above, find_user "
+    "<b>services/auth.py</b> ({auth}): the false outcomes of create_user's validation checks listed above, find_user "
     "returning nothing, and the disabled-account check on a valid token.",
     "<b>routes/evidence_routes.py</b> and <b>routes/resolution_routes.py</b>: 404 and 403 outcomes when listing or "
     "downloading notes and evidence.",
@@ -375,8 +378,9 @@ def system_report(junit, meta, latency):
             n, med, p99 = latency
             s.append(P(f"SV-10 measured {n} requests: median {med} ms, p99 {p99} ms (single client, in-process, no "
                        "network). This shows the application code is far inside the 500 ms budget, but it is "
-                       "<b>not</b> the 500-concurrent-user test NFR-001 requires; see DEF-01 for why concurrency "
-                       "must be fixed first."))
+                       "<b>not</b> the 500-concurrent-user test NFR-001 requires"
+                       + (". With DEF-01 fixed, that load test is the next step." if SPRINT3 else
+                          "; see DEF-01 for why concurrency must be fixed first.")))
         s += [P("4. Requirement validation matrix", "h1")]
         req_rows = [["Requirement", "Test cases", "Status", "Notes"]]
         for req, tcs, note, *forced in REQ_MATRIX:
@@ -395,8 +399,12 @@ def system_report(junit, meta, latency):
                        [w * .16, w * .38, w * .46]))
         s += [P("7. Conclusion", "h1"),
               P("All implemented core use cases (submit, categorise, route, track, resolve, escalate, notify, "
-                "monitor SLA, dashboard, RBAC) pass end-to-end. The system is not yet release-ready for "
-                "multi-user load: DEF-01 must be merged before NFR-001 is load-tested. FR-008 (ratings, auto-close) "
+                "monitor SLA, dashboard, RBAC) pass end-to-end. "
+                + ("DEF-01 (concurrent writes) was fixed in Sprint 3; NFR-001 still needs a networked "
+                   "500-user load test. " if SPRINT3 else
+                   "The system is not yet release-ready for multi-user load: DEF-01 must be merged before "
+                   "NFR-001 is load-tested. ")
+                + "FR-008 (ratings, auto-close) "
                 "and the FR-012 immutable audit log are not implemented and are carried into Sprint 3 together "
                 "with the 70% NLP threshold and per-category SLA rules.")]
         return s
@@ -409,6 +417,8 @@ def system_report(junit, meta, latency):
 REQ_MATRIX = [
     ("FR-001 Submission", ["TC01", "TC02", "TC03", "TC04"], "Limits, image checks and GPS validated."),
     ("FR-002 NLP categories", ["TC05", "TC06", "TC28"], "Top-3 + override pass; 70% threshold not implemented."),
+    ("FR-003 Ticket ID", ["TC07"], "Sequential and concurrent uniqueness pass (DEF-01 fixed in Sprint 3).")
+    if SPRINT3 else
     ("FR-003 Ticket ID", ["TC07"], "Sequential uniqueness passes; concurrent uniqueness fails on main (DEF-01).", "Partial"),
     ("FR-004 Routing", ["TC08", "TC09", "TC28"], "Department, zone, workload and supervisor fallback."),
     ("FR-005 Lifecycle", ["TC10", "TC23"], "All transitions logged with time and actor."),
@@ -424,14 +434,17 @@ REQ_MATRIX = [
     ("NFR-001 Performance", ["TC20"], "Load test not executed; single-client smoke only."),
     ("NFR-002 Security", ["TC26"], "App-level controls pass (bcrypt, JWT, RBAC, file signatures). TLS 1.3 and "
      "AES-256 at rest are deployment concerns and were not tested.", "Partial"),
-    ("NFR-003 Availability", [], "Not tested: needs a deployed environment. Data-loss risk under concurrency (DEF-01)."),
+    ("NFR-003 Availability", [], "Not tested: needs a deployed environment." + (" Atomic writes (Sprint 3) cover a failed save (UT-09)."
+     if SPRINT3 else " Data-loss risk under concurrency (DEF-01).")),
 ]
 DEFECTS = [
     ("DEF-01", "High", "Concurrent submissions on main (commit 66d1420): 20 simultaneous requests gave 5-9 successful "
      "responses, duplicate ticket IDs, and in one run left complaints_store.json unreadable (JSONDecodeError). "
-     "Cause: read-modify-write of the JSON file without locking or atomic replace. Fix exists on branch "
-     "feature/concurrency-safe-storage (Sprint 3 Task 1): re-running the same 20-request check there gave 20/20 "
-     "unique IDs, all stored.", "Fixed on branch"),
+     "Cause: read-modify-write of the JSON file without locking or atomic replace. "
+     + ("Fixed in Sprint 3 Task 1 (PR #25: locked, atomic JSON writes); regression tests UT-04 to UT-09 and IT-04 "
+        "in tests/test_storage.py pass." if SPRINT3 else
+        "Fix exists on branch feature/concurrency-safe-storage (Sprint 3 Task 1): re-running the same 20-request "
+        "check there gave 20/20 unique IDs, all stored."), "Fixed" if SPRINT3 else "Fixed on branch"),
     ("DEF-02", "Medium", "FR-008 rating, feedback and 7-day auto-close not implemented; dashboard CSAT always N/A.", "Open"),
     ("DEF-03", "Medium", "FR-012: no immutable audit log; history is stored inside the editable complaint record.", "Open"),
     ("DEF-04", "Low", "FR-002: no 70% confidence threshold or low-confidence prompt.", "Open"),
@@ -460,7 +473,8 @@ def test_case_doc(junit, meta, statuses):
                "and every case now records its actual result, status and the automated tests that execute it. "
                "Status is computed from the latest automated run: a case passes only if all of its tests pass. "
                "Concurrency cases UT-04 to UT-09 / IT-04 for Sprint 3 Task 1 are kept in "
-               "Documents/Sprint_3_Test_Cases.md on branch feature/concurrency-safe-storage."),
+               "Documents/Sprint_3_Test_Cases.md" + ("; UT-04 and UT-05 also count toward TC07." if SPRINT3 else
+               " on branch feature/concurrency-safe-storage.")),
              ]
         counts = OrderedDict((k, 0) for k in ("Pass", "Fail", "Partial", "Not Implemented", "Not Executed"))
         for v in statuses.values():
@@ -483,7 +497,7 @@ def test_case_doc(junit, meta, statuses):
         rows = [["Requirement", "Test cases"]] + [[r, ", ".join(t) or "-"] for r, t, *_ in REQ_MATRIX]
         s.append(table(rows, [w * .3, w * .7]))
         return s
-    build(DOCS / "Test_Cases_Updated.pdf", "Test Case Document (Updated)", "Version 2.0 - after Sprint 2", meta,
+    build(DOCS / "Test_Cases_Updated.pdf", "Test Case Document (Updated)", "Version 2.1 - after Sprint 3 Task 1" if SPRINT3 else "Version 2.0 - after Sprint 2", meta,
           story, landscape_mode=True)
 
 
