@@ -8,3 +8,4 @@ data/users.json
 uploads/
 data/sla_rules.json
 data/notifications.json
+.coverage

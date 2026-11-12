@@ -1,0 +1,133 @@
+........................................................................ [ 63%]
+..........................................                               [100%]
+==================================== PASSES ====================================
+_________________ test_provider_failure_does_not_break_request _________________
+------------------------------ Captured log call -------------------------------
+WARNING  scms.notifications:notifications.py:83 Notification delivery failed: SMTP server unreachable
+________________________ test_sv10_response_time_smoke _________________________
+----------------------------- Captured stdout call -----------------------------
+
+SV-10 latency over 200 requests: median 0.8 ms, p99 1.1 ms
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.12.3-final-0 ________________
+
+Coverage HTML written to dir /home/claude/scms/docs/reports/coverage-html
+Coverage XML written to file /home/claude/scms/docs/reports/coverage.xml
+Coverage JSON written to file /home/claude/scms/docs/reports/coverage.json
+- Generated html report: file:///home/claude/scms/docs/reports/unit-test-report.html -
+=========================== short test summary info ============================
+PASSED tests/test_auth.py::test_user_can_register
+PASSED tests/test_auth.py::test_password_is_hashed_with_bcrypt
+PASSED tests/test_auth.py::test_duplicate_email_rejected
+PASSED tests/test_auth.py::test_registration_validation
+PASSED tests/test_auth.py::test_self_registration_cannot_pick_admin_role
+PASSED tests/test_auth.py::test_user_can_login_and_gets_jwt
+PASSED tests/test_auth.py::test_wrong_password_rejected
+PASSED tests/test_auth.py::test_jwt_authentication_works
+PASSED tests/test_auth.py::test_role_permissions_enforced
+PASSED tests/test_auth.py::test_complaint_list_restricted_to_staff
+PASSED tests/test_categorizer.py::test_top_3_categories_suggested
+PASSED tests/test_categorizer.py::test_confidence_score_present
+PASSED tests/test_categorizer.py::test_correct_category_ranked_first
+PASSED tests/test_categorizer.py::test_user_can_override_suggestion
+PASSED tests/test_categorizer.py::test_empty_text_rejected
+PASSED tests/test_dashboard.py::test_kpis_are_accurate
+PASSED tests/test_dashboard.py::test_filters
+PASSED tests/test_dashboard.py::test_empty_data_has_no_crashes
+PASSED tests/test_dashboard.py::test_dashboard_endpoint_and_permissions
+PASSED tests/test_dashboard.py::test_report_generated_as_csv
+PASSED tests/test_dashboard.py::test_dashboard_page_has_auto_refresh
+PASSED tests/test_escalation.py::test_escalation_moves_ticket_to_priority_queue_with_new_sla
+PASSED tests/test_escalation.py::test_new_sla_timer_raises_fresh_alerts
+PASSED tests/test_escalation.py::test_stakeholders_notified
+PASSED tests/test_escalation.py::test_escalate_to_another_team
+PASSED tests/test_escalation.py::test_escalated_ticket_tops_receiving_agent_queue
+PASSED tests/test_escalation.py::test_validation
+PASSED tests/test_escalation.py::test_only_supervisors_and_admins_escalate
+PASSED tests/test_escalation.py::test_resolved_complaint_cannot_be_escalated
+PASSED tests/test_escalation.py::test_stalled_complaints_listed_for_supervisor
+PASSED tests/test_escalation.py::test_unassigned_complaint_escalated_to_team_gets_assigned
+PASSED tests/test_evidence.py::test_images_and_pdfs_upload_successfully
+PASSED tests/test_evidence.py::test_files_linked_to_complaint
+PASSED tests/test_evidence.py::test_invalid_files_rejected
+PASSED tests/test_evidence.py::test_file_size_validated
+PASSED tests/test_evidence.py::test_only_assigned_agent_or_supervisor_can_upload
+PASSED tests/test_evidence.py::test_download_evidence
+PASSED tests/test_evidence.py::test_closed_complaint_rejects_evidence
+PASSED tests/test_evidence.py::test_file_type_detected_by_signature
+PASSED tests/test_notifications.py::test_submission_notifies_citizen_and_assigned_agent
+PASSED tests/test_notifications.py::test_status_updates_sent_to_citizen
+PASSED tests/test_notifications.py::test_resolution_notification_sent
+PASSED tests/test_notifications.py::test_sms_only_for_opted_in_users
+PASSED tests/test_notifications.py::test_email_opt_out_and_preference_validation
+PASSED tests/test_notifications.py::test_sla_warning_and_breach_notifications
+PASSED tests/test_notifications.py::test_unassigned_complaint_notifies_supervisors
+PASSED tests/test_notifications.py::test_reassigned_agent_notified_on_override
+PASSED tests/test_notifications.py::test_mark_read_and_privacy
+PASSED tests/test_notifications.py::test_provider_failure_does_not_break_request
+PASSED tests/test_notifications.py::test_email_provider
+PASSED tests/test_notifications.py::test_sms_provider
+PASSED tests/test_resolution.py::test_agent_queue_sorted_by_sla_with_overdue_on_top
+PASSED tests/test_resolution.py::test_agent_resolves_with_notes_and_citizen_is_notified
+PASSED tests/test_resolution.py::test_resolving_without_notes_is_rejected
+PASSED tests/test_resolution.py::test_internal_notes_stored_with_author_and_timestamp
+PASSED tests/test_resolution.py::test_internal_notes_hidden_from_citizen
+PASSED tests/test_resolution.py::test_only_assigned_agent_can_manage
+PASSED tests/test_resolution.py::test_pending_info_question_reaches_citizen
+PASSED tests/test_resolution.py::test_reopen_clears_resolution_and_done_items_listed_last
+PASSED tests/test_resolution.py::test_closed_complaint_rejects_notes
+PASSED tests/test_routing.py::test_correct_department_for_each_category
+PASSED tests/test_routing.py::test_agent_assignment_is_automatic
+PASSED tests/test_routing.py::test_only_agents_from_the_right_department
+PASSED tests/test_routing.py::test_workload_balancing_picks_least_loaded
+PASSED tests/test_routing.py::test_resolved_complaints_do_not_count_as_load
+PASSED tests/test_routing.py::test_same_zone_agent_preferred
+PASSED tests/test_routing.py::test_unavailable_agents_go_to_supervisor_queue
+PASSED tests/test_routing.py::test_submitted_complaint_is_routed
+PASSED tests/test_sla.py::test_deadline_calculated_from_severity_rules
+PASSED tests/test_sla.py::test_warning_alert_triggers_near_deadline
+PASSED tests/test_sla.py::test_breach_alert_triggers_after_deadline
+PASSED tests/test_sla.py::test_resolved_complaints_do_not_alert
+PASSED tests/test_sla.py::test_violations_and_compliance_tracked
+PASSED tests/test_sla.py::test_new_complaint_gets_sla_deadline
+PASSED tests/test_sla.py::test_admin_configures_rules_others_cannot
+PASSED tests/test_sla.py::test_alert_endpoints
+PASSED tests/test_status.py::test_new_complaint_starts_new_then_assigned
+PASSED tests/test_status.py::test_status_changes_recorded_with_timestamps
+PASSED tests/test_status.py::test_timeline_shows_complete_history
+PASSED tests/test_status.py::test_invalid_transition_rejected
+PASSED tests/test_status.py::test_permissions_on_status_changes
+PASSED tests/test_status.py::test_only_involved_users_can_view
+PASSED tests/test_status.py::test_unassigned_complaint_stays_new
+PASSED tests/test_submission.py::test_complaint_submitted_successfully
+PASSED tests/test_submission.py::test_images_uploaded_correctly
+PASSED tests/test_submission.py::test_gps_coordinates_stored
+PASSED tests/test_submission.py::test_validation_errors_shown
+PASSED tests/test_submission.py::test_oversized_image_rejected
+PASSED tests/test_submission.py::test_non_image_and_too_many_images_rejected
+PASSED tests/test_submission.py::test_login_required_and_only_citizens_submit
+PASSED tests/test_submission.py::test_citizen_sees_only_own_complaints
+PASSED tests/test_system_validation.py::test_sv01_complaint_end_to_end_happy_path
+PASSED tests/test_system_validation.py::test_sv02_submission_validation_and_limits
+PASSED tests/test_system_validation.py::test_sv03_nlp_suggestions_and_override
+PASSED tests/test_system_validation.py::test_sv04_unassignable_complaint_goes_to_supervisor_then_escalated
+PASSED tests/test_system_validation.py::test_sv05_sla_warning_and_breach_alerts
+PASSED tests/test_system_validation.py::test_sv06_rbac_matrix[post-/submit-complaint-allowed0]
+PASSED tests/test_system_validation.py::test_sv06_rbac_matrix[get-/complaints-allowed1]
+PASSED tests/test_system_validation.py::test_sv06_rbac_matrix[get-/complaints/mine-allowed2]
+PASSED tests/test_system_validation.py::test_sv06_rbac_matrix[get-/agent/complaints-allowed3]
+PASSED tests/test_system_validation.py::test_sv06_rbac_matrix[get-/dashboard/data-allowed4]
+PASSED tests/test_system_validation.py::test_sv06_rbac_matrix[get-/escalations/data-allowed5]
+PASSED tests/test_system_validation.py::test_sv06_rbac_matrix[put-/sla/rules-allowed6]
+PASSED tests/test_system_validation.py::test_sv06_rbac_matrix[get-/auth/users-allowed7]
+PASSED tests/test_system_validation.py::test_sv06_rbac_matrix[post-/auth/users-allowed8]
+PASSED tests/test_system_validation.py::test_sv07_authentication_security
+PASSED tests/test_system_validation.py::test_sv08_notes_and_evidence
+PASSED tests/test_system_validation.py::test_sv09_dashboard_reflects_stored_data
+PASSED tests/test_system_validation.py::test_sv10_response_time_smoke
+PASSED tests/test_ticket_id.py::test_format_is_date_based
+PASSED tests/test_ticket_id.py::test_sequence_increments_within_a_day
+PASSED tests/test_ticket_id.py::test_sequence_restarts_on_new_day
+PASSED tests/test_ticket_id.py::test_no_duplicates_over_many_complaints
+PASSED tests/test_ticket_id.py::test_submitted_complaint_gets_ticket_id
+114 passed in 239.59s (0:03:59)
