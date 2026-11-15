@@ -12,7 +12,14 @@ ST = "tests/test_storage.py::"
 # Sprint 3 Task 2 (rating, feedback, auto-close, PR #37) is merged when services/feedback.py exists.
 TASK2 = (Path(__file__).resolve().parent.parent / "services" / "feedback.py").exists()
 FB = "tests/test_feedback.py::"
-SPRINT3_LABEL = "Sprint 3 Tasks 1-2" if TASK2 else "Sprint 3 Task 1"
+_ROOT = Path(__file__).resolve().parent.parent
+# Later Sprint 3 tasks, detected the same way: the report text follows whatever is merged.
+TASK3 = (_ROOT / "services" / "audit.py").exists()                                      # audit log, PR for #28
+TASK6 = "def hours_for" in (_ROOT / "services" / "sla.py").read_text()                  # per-category SLA, #31
+TASK7 = (_ROOT / "tests" / "test_citizen_reply.py").exists()                            # citizen reply, #32
+SPRINT3_TASKS = [n for n, done in ((1, SPRINT3), (2, TASK2), (3, TASK3), (6, TASK6), (7, TASK7)) if done]
+SPRINT3_LABEL = ("Sprint 3 Task " if len(SPRINT3_TASKS) == 1 else "Sprint 3 Tasks ") + ", ".join(map(str, SPRINT3_TASKS))
+AU, RP = "tests/test_audit.py::", "tests/test_citizen_reply.py::"
 
 CASES = [
     dict(id="TC01", req="FR-001", priority="High", scenario="Submit complaint with valid details",
@@ -322,6 +329,51 @@ if TASK2:   # FR-008 built in Sprint 3 Task 2: TC14 / TC15 become automated case
                "reopened complaints left alone.")
     _by_id["TC18"].update(change="CSAT and the CSAT trend (average rating per day) fill in once ratings exist "
                                  "(Sprint 3 Task 2).")
+
+_by_id = {c["id"]: c for c in CASES}
+if TASK3:   # FR-012 built in Sprint 3 Task 3
+    _by_id["TC19"].update(
+        fixed_status=None,
+        change="Implemented in Sprint 3 Task 3: append-only, hash-chained audit log of every complaint action, "
+               "login and admin change; /audit viewer for supervisors and admins; /audit/verify detects edits.",
+        tests=[AU + t for t in ("test_full_complaint_lifecycle_is_recorded_with_actor_and_time",
+                                "test_escalation_is_recorded", "test_system_actions_are_recorded_as_system",
+                                "test_logins_failed_logins_and_admin_actions_are_recorded",
+                                "test_global_log_is_staff_only_and_filterable", "test_no_update_or_delete_endpoints",
+                                "test_edited_entry_is_detected", "test_edited_entry_with_recomputed_hash_breaks_the_chain",
+                                "test_deleted_or_reordered_entries_are_detected")],
+        actual="Every action logged with actor ID and UTC time; no update/delete endpoint (405); edited, re-hashed, "
+               "deleted and reordered entries all reported by /audit/verify.")
+if TASK6:   # FR-006 per-category rules, Sprint 3 Task 6
+    _by_id["TC11"].update(change="Deadlines use the category's override for the severity if one exists, otherwise "
+                                 "the severity default (Sprint 3 Task 6).")
+    _by_id["TC27"].update(
+        steps="1. Admin updates High to 12 h. 2. Admin sets Water Supply / Critical to 2 h. 3. Non-admin tries. "
+              "4. Submit Water Supply and Roads Critical complaints. 5. Send invalid rules.",
+        data="High: 12 h; Water Supply / Critical: 2 h.",
+        expected="Only admin can change rules; the override applies to Water Supply only; invalid rules rejected "
+                 "without saving anything.",
+        change="Sprint 3 Task 6 adds per-category overrides and the /sla/admin form.",
+        tests=_by_id["TC27"]["tests"] + ["tests/test_sla.py::" + t for t in (
+            "test_category_override_applies_only_to_that_category",
+            "test_admin_sets_category_rule_and_new_complaints_use_it",
+            "test_invalid_category_rules_are_rejected_and_nothing_is_saved",
+            "test_only_admin_can_change_category_rules", "test_escalation_uses_category_rule")],
+        actual="Water Supply Critical complaint gets 2 h, Roads Critical 4 h; invalid categories, severities and hours "
+               "rejected (400) with rules unchanged; supervisor 403.")
+if TASK7:   # FR-013 / UC-04 3a, Sprint 3 Task 7
+    CASES.append(dict(
+        id="TC29", req="FR-013", priority="Medium", scenario="Citizen answers a Pending Info query",
+        pre="Agent has set the complaint to Pending Info with a question.",
+        steps="1. Citizen opens the complaint and replies. 2. Check timeline and status. 3. Check agent inbox. "
+              "4. Reply as another user, when not Pending Info, and with empty text.",
+        data="Question: Which house?; reply: House 42.",
+        expected="Reply in the timeline, complaint back In Progress, agent notified; invalid replies rejected.",
+        change="New in Sprint 3 Task 7 (UC-04 alternative flow 3a).",
+        tests=[RP + t for t in ("test_reply_is_logged_and_work_resumes", "test_agent_is_notified_with_the_reply",
+                                "test_only_the_owner_can_reply", "test_reply_only_while_pending_info",
+                                "test_reply_text_is_validated")],
+        actual="Reply logged, status In Progress, agent notified; other users 403, wrong state and empty text 400."))
 
 SV_CASES = [
     ("SV-01", "test_sv01_complaint_end_to_end_happy_path", "Full lifecycle: submit with image + GPS, auto-route, "

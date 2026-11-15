@@ -34,7 +34,7 @@ from reportlab.platypus import KeepTogether, PageBreak, Paragraph, SimpleDocTemp
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from test_cases import CASES, SPRINT3, SPRINT3_LABEL, SV_CASES, TASK2  # noqa: E402
+from test_cases import CASES, SPRINT3, SPRINT3_LABEL, SV_CASES, TASK2, TASK3, TASK6, TASK7  # noqa: E402
 
 DOCS, RAW = ROOT / "docs", ROOT / "docs" / "reports"
 PROJECT = "Smart Complaint Management System"
@@ -244,8 +244,9 @@ def coverage_reports(cov, meta):
         s += [P("4. Limitations of this metric", "h1"),
               P("Statement coverage shows which lines ran, not whether their results were checked; it is backed here "
                 "by assertions in every test. It cannot show missing features ("
-                + ("TC06 and TC19" if TASK2 else "TC06, TC14, TC15, TC19") + " are not "
-                "implemented, so there is no code to cover), and it says nothing about the templates and JavaScript, "
+                + ", ".join(t for t, gone in (("TC06", False), ("TC14", TASK2), ("TC15", TASK2), ("TC19", TASK3))
+                            if not gone)
+                + (" is" if TASK2 and TASK3 else " are") + " not implemented, so there is no code to cover), and it says nothing about the templates and JavaScript, "
                 "which are exercised only in manual browser testing. Branch coverage, in the companion report, is "
                 "the stricter measure."),
               P("5. Evidence", "h1"),
@@ -405,12 +406,7 @@ def system_report(junit, meta, latency):
                    "500-user load test. " if SPRINT3 else
                    "The system is not yet release-ready for multi-user load: DEF-01 must be merged before "
                    "NFR-001 is load-tested. ")
-                + ("FR-008 (ratings, auto-close) was built in Sprint 3 Task 2. The FR-012 immutable audit log "
-                   "is not implemented and stays in Sprint 3 together "
-                   if TASK2 else
-                   "FR-008 (ratings, auto-close) and the FR-012 immutable audit log are not implemented and are "
-                   "carried into Sprint 3 together ")
-                + "with the 70% NLP threshold and per-category SLA rules.")]
+                + remaining_work())]
         return s
     meta_commit = dict(meta).get("Commit tested", "")
     build(DOCS / "System_Validation_Report.pdf", "System Validation Report", "Software Engineering Mini-Project - Part 3",
@@ -426,7 +422,8 @@ REQ_MATRIX = [
     ("FR-003 Ticket ID", ["TC07"], "Sequential uniqueness passes; concurrent uniqueness fails on main (DEF-01).", "Partial"),
     ("FR-004 Routing", ["TC08", "TC09", "TC28"], "Department, zone, workload and supervisor fallback."),
     ("FR-005 Lifecycle", ["TC10", "TC23"], "All transitions logged with time and actor."),
-    ("FR-006 SLA", ["TC11", "TC12", "TC27"], "Severity-based rules; per-category rules pending."),
+    ("FR-006 SLA", ["TC11", "TC12", "TC27"], "Severity defaults with per-category overrides (Sprint 3 Task 6)."
+     if TASK6 else "Severity-based rules; per-category rules pending."),
     ("FR-007 Notifications", ["TC13", "TC25"], "In-app, email, opt-in SMS."),
     ("FR-008 Rating / auto-close", ["TC14", "TC15"],
      "Built in Sprint 3 Task 2: 1-5 rating closes; unrated auto-close after 7 days." if TASK2 else
@@ -435,8 +432,10 @@ REQ_MATRIX = [
     ("FR-010 RBAC", ["TC17", "TC26"], "45 role/endpoint checks; user update/deactivate pending."),
     ("FR-011 Dashboard", ["TC18", "TC24"], "KPIs, filters, CSV, 60 s refresh; "
      + ("CSAT and CSAT trend from ratings." if TASK2 else "CSAT N/A.")),
-    ("FR-012 Audit log", ["TC19"], "Actor + time recorded, not tamper-proof; Sprint 3 Task 3."),
-    ("FR-013 Resolution", ["TC22"], "Resolution notes required; citizen notified."),
+    ("FR-012 Audit log", ["TC19"], "Hash-chained append-only log with viewer and verify (Sprint 3 Task 3)." if TASK3
+     else "Actor + time recorded, not tamper-proof; Sprint 3 Task 3."),
+    ("FR-013 Resolution", ["TC22"] + (["TC29"] if TASK7 else []), "Resolution notes required; citizen notified"
+     + ("; citizen can answer Pending Info (Sprint 3 Task 7)." if TASK7 else ".")),
     ("FR-014 Notes / evidence", ["TC21", "TC22"], "10 MB limit, content-type check, staff-only notes."),
     ("NFR-001 Performance", ["TC20"], "Load test not executed; single-client smoke only."),
     ("NFR-002 Security", ["TC26"], "App-level controls pass (bcrypt, JWT, RBAC, file signatures). TLS 1.3 and "
@@ -444,6 +443,17 @@ REQ_MATRIX = [
     ("NFR-003 Availability", [], "Not tested: needs a deployed environment." + (" Atomic writes (Sprint 3) cover a failed save (UT-09)."
      if SPRINT3 else " Data-loss risk under concurrency (DEF-01).")),
 ]
+def remaining_work():
+    built = [x for x, done in (("FR-008 ratings and auto-close", TASK2), ("the FR-012 audit log", TASK3),
+                                ("per-category SLA rules", TASK6), ("citizen replies to Pending Info", TASK7)) if done]
+    left = [x for x, done in (("FR-008 (ratings, auto-close)", TASK2), ("the FR-012 immutable audit log", TASK3),
+                               ("per-category SLA rules", TASK6)) if not done] + ["the 70% NLP threshold"]
+    def join(xs):
+        return xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + " and " + xs[-1]
+    head = f"Sprint 3 delivered {join(built)}. " if built else ""
+    return head + f"Still open: {', '.join(left)}, plus NFR-001/NFR-003, which need a deployed environment."
+
+
 DEFECTS = [
     ("DEF-01", "High", "Concurrent submissions on main (commit 66d1420): 20 simultaneous requests gave 5-9 successful "
      "responses, duplicate ticket IDs, and in one run left complaints_store.json unreadable (JSONDecodeError). "
@@ -455,9 +465,12 @@ DEFECTS = [
     ("DEF-02", "Medium", "FR-008 rating, feedback and 7-day auto-close not implemented; dashboard CSAT always N/A."
      + (" Fixed in Sprint 3 Task 2 (PR #37); TC14 and TC15 now automated." if TASK2 else ""),
      "Fixed" if TASK2 else "Open"),
-    ("DEF-03", "Medium", "FR-012: no immutable audit log; history is stored inside the editable complaint record.", "Open"),
+    ("DEF-03", "Medium", "FR-012: no immutable audit log; history is stored inside the editable complaint record."
+     + (" Fixed in Sprint 3 Task 3: hash-chained append-only log; tail truncation is still undetectable without an "
+        "external anchor." if TASK3 else ""), "Fixed" if TASK3 else "Open"),
     ("DEF-04", "Low", "FR-002: no 70% confidence threshold or low-confidence prompt.", "Open"),
-    ("DEF-05", "Low", "FR-006: SLA hours depend on severity only, not category and severity.", "Open"),
+    ("DEF-05", "Low", "FR-006: SLA hours depend on severity only, not category and severity."
+     + (" Fixed in Sprint 3 Task 6 (per-category overrides)." if TASK6 else ""), "Fixed" if TASK6 else "Open"),
 ]
 DEVIATIONS = [
     ("Architecture", "Lab 3 justification: microservices (6 services behind an API gateway, each with its own "
