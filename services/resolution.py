@@ -75,3 +75,20 @@ def queue(complaints, agent_id, include_done=False, now=None):
                    minutes_left=int((due - now).total_seconds() // 60) if due else None, escalated=bool(c.get("escalated")))
         rows.append(((row["status"] in DONE_STATES, not row["escalated"], due or NEVER), row))
     return [row for _, row in sorted(rows, key=lambda r: r[0])]
+
+
+def citizen_reply(complaint, user, text):
+    """Sprint 3 Task 7 (issue #32, FR-013, UC-04 alt flow 3a): the owner answers a Pending Info query.
+
+    The reply is kept on the complaint and in the timeline, and work resumes (back to In Progress).
+    Raises PermissionError (not the owner) or ValueError (wrong state, empty or too long text).
+    """
+    if complaint.get("citizen_id") != user["id"]:
+        raise PermissionError("Only the citizen who raised this complaint can reply")
+    if complaint.get("status") != "Pending Info":
+        raise ValueError("You can only reply while the complaint is waiting for your information (Pending Info)")
+    text = _clean(text, "Reply text is required")
+    reply = {"text": text, "by": user["id"], "at": datetime.now(timezone.utc).isoformat()}
+    complaint.setdefault("replies", []).append(reply)
+    lifecycle.change(complaint, "In Progress", user["id"], f"Citizen replied: {text}")
+    return reply

@@ -28,6 +28,7 @@ SUBJECTS = {
     "sla_warning": "SLA deadline approaching",
     "sla_breach": "SLA breached",
     "escalated": "Complaint escalated",
+    "citizen_reply": "Citizen replied to your query",
 }
 log = logging.getLogger("scms.notifications")
 _lock = storage.LOCK
@@ -178,6 +179,13 @@ def status_changed(c, actor_id, note=None):
     if note:
         message += f" Note: {note}"
     notify([u for u in (c.get("citizen_id"), c.get("assigned_to")) if u and u != actor_id], kind, message, c)
+
+
+def citizen_replied(c, text):
+    """Sprint 3 Task 7: tell the assigned agent what the citizen answered."""
+    if c.get("assigned_to"):
+        notify([c["assigned_to"]], "citizen_reply",
+               f"The citizen replied on {c['id']} ('{c['title']}'): {text} It is back In Progress.", c)
 
 
 def complaint_escalated(c):

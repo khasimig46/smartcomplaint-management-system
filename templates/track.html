@@ -116,6 +116,27 @@
       };
     }
 
+    function replyHtml(c) {   // Sprint 3 Task 7: answer the agent's Pending Info question
+      if (!user || user.role !== "citizen" || c.status !== "Pending Info") return "";
+      const asked = (c.history || []).filter((h) => h.status === "Pending Info").pop();
+      return `<h3>The agent needs more information</h3>
+        ${asked && asked.note ? `<p class="card">${esc(asked.note)}</p>` : ""}
+        <form id="replyForm"><div class="row"><textarea id="replyText" maxlength="2000" rows="3"
+          placeholder="Your answer (required)"></textarea></div><button type="submit">Send reply</button></form>
+        <p id="replyMsg"></p>`;
+    }
+
+    function bindReply(c) {
+      if (!$("replyForm")) return;
+      $("replyForm").onsubmit = async (e) => {
+        e.preventDefault();
+        const r = await fetch(`/complaints/${encodeURIComponent(c.id)}/reply`, { method: "POST",
+          headers: { ...H, "Content-Type": "application/json" }, body: JSON.stringify({ text: $("replyText").value }) });
+        if (!r.ok) { $("replyMsg").textContent = (await r.json()).error; $("replyMsg").className = "err"; return; }
+        await track(c.id); loadMine();
+      };
+    }
+
     async function track(id) {
       $("msg").textContent = ""; $("out").innerHTML = "";
       const r = await fetch(`/complaints/${encodeURIComponent(id)}`, { headers: H });
@@ -131,8 +152,10 @@
           <li><strong>${esc(h.status)}</strong>${h.note ? ` &mdash; ${esc(h.note)}` : ""}<br>
               <span class="when">${new Date(h.at).toLocaleString()} &middot; by ${esc(h.by)}</span></li>`).join("")}
         </ol>
+        ${replyHtml(c)}
         ${feedbackHtml(c)}
         ${evidenceHtml(c)}`;
+      bindReply(c);
       bindFeedback(c);
       bindEvidence(c);
     }

@@ -189,3 +189,23 @@ def give_feedback(cid):
             notifications.status_changed(c, g.user["id"], c["history"][-1]["note"])   # agent sees the rating
             return jsonify(resolution.for_viewer(g.user, c))
     return jsonify({"error": "Complaint not found"}), 404
+
+
+@bp.post("/complaints/<cid>/reply")
+@roles_required("citizen")
+@storage.synchronized
+def citizen_reply(cid):
+    """Sprint 3 Task 7 (FR-013, UC-04 3a): the owner answers a Pending Info query; work resumes."""
+    items = _load()
+    for c in items:
+        if c["id"] == cid:
+            try:
+                reply = resolution.citizen_reply(c, g.user, (request.get_json(silent=True) or {}).get("text"))
+            except PermissionError as e:
+                return jsonify({"error": str(e)}), 403
+            except ValueError as e:
+                return jsonify({"error": str(e)}), 400
+            _save(items)
+            notifications.citizen_replied(c, reply["text"])
+            return jsonify(resolution.for_viewer(g.user, c))
+    return jsonify({"error": "Complaint not found"}), 404
