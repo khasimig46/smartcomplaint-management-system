@@ -1,7 +1,7 @@
 from flask import Blueprint, g, jsonify, request, send_file
 
 import routes.complaint_routes as cr
-from services import evidence, storage
+from services import audit, evidence, storage
 from services.auth import STAFF_ROLES, login_required, roles_required
 
 bp = Blueprint("evidence", __name__)
@@ -30,6 +30,8 @@ def upload(cid):
         return jsonify({"error": error}), 400
     added = evidence.store(c, files, g.user, cr.UPLOADS)
     cr._save(items)
+    audit.record("evidence_uploaded", g.user["id"], cid, files=[{"id": e["id"], "filename": e["filename"],
+                                                                "size": e["size"]} for e in added])
     return jsonify(added), 201
 
 

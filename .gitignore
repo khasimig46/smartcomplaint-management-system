@@ -5,6 +5,7 @@ venv/
 .pytest_cache/
 data/complaints_store.json
 data/users.json
+data/audit_log.jsonl
 uploads/
 data/sla_rules.json
 data/notifications.json

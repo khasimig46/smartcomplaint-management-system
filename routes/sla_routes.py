@@ -3,7 +3,7 @@ import threading
 from flask import Blueprint, g, jsonify, render_template, request
 
 import routes.complaint_routes as cr
-from services import feedback, notifications, sla, storage
+from services import audit, feedback, notifications, sla, storage
 from nlp.categorizer import get_categories
 from services.auth import STAFF_ROLES, roles_required
 
@@ -18,6 +18,10 @@ def run_check():
         closed = feedback.auto_close(items)
         if new or closed:
             cr._save(items)
+        for a in new:
+            audit.record(f"sla_{a['type']}", audit.SYSTEM, a["complaint_id"], to=a["to"], message=a["message"])
+        for c in closed:
+            audit.record("auto_closed", audit.SYSTEM, c["id"], reason=c["history"][-1]["note"])
         if new:
             notifications.sla_alerts(new, items)
         for c in closed:
@@ -41,7 +45,10 @@ def get_rules():
 @roles_required("admin")
 def put_rules():
     try:
-        return jsonify(sla.save_rules(request.get_json(silent=True) or {}, categories=get_categories()))
+        updates = request.get_json(silent=True) or {}
+        rules = sla.save_rules(updates, categories=get_categories())
+        audit.record("sla_rules_changed", g.user["id"], changes=updates)
+        return jsonify(rules)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 

@@ -7,7 +7,7 @@ from nlp.categorizer import get_categories, suggest_categories
 from services import complaints as schema
 from services import feedback
 from services.auth import STAFF_ROLES, load_users, login_required, roles_required
-from services import notifications, storage
+from services import audit, notifications, storage
 from services import resolution
 from services import sla
 from services import status as lifecycle
@@ -90,6 +90,8 @@ def submit():
     sla.assign_deadline(complaint)
     items.append(complaint)
     _save(items)
+    audit.record("complaint_submitted", g.user["id"], ticket, category=category, severity=complaint["severity"],
+                 department=complaint.get("department"), assigned_to=complaint.get("assigned_to"))
     notifications.complaint_submitted(complaint)
     return jsonify(complaint), 201
 
@@ -107,6 +109,7 @@ def override():
         if c["id"] == cid:
             if not _can_view(g.user, c):
                 return jsonify({"error": "You do not have permission to do this"}), 403
+            previous_category = c["category"]
             c["category"], c["overridden"] = category, True
             others = [o for o in items if o["id"] != cid]
             previous_agent = c.get("assigned_to")
@@ -115,6 +118,8 @@ def override():
                 if c["assigned_to"] and c.get("status") == "New":
                     lifecycle.change(c, "Assigned", "system", f"Auto-assigned to {c['assigned_to']}")
             _save(items)
+            audit.record("category_overridden", g.user["id"], cid, from_category=previous_category, to_category=category,
+                         assigned_to=c.get("assigned_to"))
             if c.get("assigned_to") and c["assigned_to"] != previous_agent:
                 notifications.complaint_assigned(c)
             return jsonify(resolution.for_viewer(g.user, c))
@@ -158,11 +163,13 @@ def update_status(cid):
         if c["id"] == cid:
             if not lifecycle.allowed_by(g.user, c, new_status):
                 return jsonify({"error": "You do not have permission to make this change"}), 403
+            old_status = c.get("status")
             try:
                 resolution.change_status(c, g.user, new_status, note)
             except (lifecycle.TransitionError, ValueError) as e:
                 return jsonify({"error": str(e)}), 400
             _save(items)
+            audit.record("status_changed", g.user["id"], cid, from_status=old_status, to_status=new_status, note=note)
             notifications.status_changed(c, g.user["id"], note)
             return jsonify(resolution.for_viewer(g.user, c))
     return jsonify({"error": "Complaint not found"}), 404
@@ -186,6 +193,8 @@ def give_feedback(cid):
             except feedback.FeedbackError as e:
                 return jsonify({"error": str(e)}), 409
             _save(items)
+            audit.record("complaint_rated", g.user["id"], cid, rating=c["feedback"]["rating"],
+                         comment=c["feedback"]["comment"], to_status="Closed")
             notifications.status_changed(c, g.user["id"], c["history"][-1]["note"])   # agent sees the rating
             return jsonify(resolution.for_viewer(g.user, c))
     return jsonify({"error": "Complaint not found"}), 404
@@ -206,6 +215,7 @@ def citizen_reply(cid):
             except ValueError as e:
                 return jsonify({"error": str(e)}), 400
             _save(items)
+            audit.record("citizen_replied", g.user["id"], cid, text=reply["text"], to_status="In Progress")
             notifications.citizen_replied(c, reply["text"])
             return jsonify(resolution.for_viewer(g.user, c))
     return jsonify({"error": "Complaint not found"}), 404

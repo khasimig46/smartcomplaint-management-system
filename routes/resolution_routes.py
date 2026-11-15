@@ -1,7 +1,7 @@
 from flask import Blueprint, g, jsonify, render_template, request
 
 import routes.complaint_routes as cr
-from services import resolution, storage
+from services import audit, resolution, storage
 from services.auth import STAFF_ROLES, roles_required
 
 bp = Blueprint("resolution", __name__)
@@ -38,6 +38,7 @@ def add_note(cid):
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     cr._save(items)
+    audit.record("note_added", g.user["id"], cid, note_id=note["id"])   # note text stays staff-only, not in the log
     return jsonify(note), 201
 
 
