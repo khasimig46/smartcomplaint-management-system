@@ -1,0 +1,36 @@
+@startuml
+!include common.iuml
+left to right direction
+title Use cases - Citizen and Agent
+actor Citizen as C
+actor Agent as A
+actor "NLP Categoriser\n(system)" as N
+rectangle "Smart Complaint Management System" {
+  usecase "UC-11 Log in" as UC11
+  usecase "UC-01 Submit complaint" as UC01
+  usecase "UC-07 Auto-categorise\ncomplaint" as UC07
+  usecase "UC-02 Track complaint status" as UC02
+  usecase "UC-03 Rate resolution" as UC03
+  usecase "Reopen resolved complaint" as UCO
+  usecase "Reply to Pending Info\n(UC-04 alt flow 3a)" as UCR
+  usecase "UC-04 Resolve complaint" as UC04
+  usecase "Request more info\n(set Pending Info)" as UCP
+  usecase "UC-05 Add notes and evidence" as UC05
+}
+C --> UC11
+C --> UC01
+C --> UC02
+C --> UC03
+C --> UCO
+C --> UCR
+UC01 ..> UC07 : <<include>>
+UC03 ..> UC02 : <<extend>>
+UCO ..> UC02 : <<extend>>
+UCR ..> UCP : <<extend>>
+UCP ..> UC04 : <<extend>>
+UC11 <-- A
+UC04 <-- A
+UCP <-- A
+UC05 <-- A
+UC07 <-- N
+@enduml

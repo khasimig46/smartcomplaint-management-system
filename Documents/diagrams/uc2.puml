@@ -1,0 +1,31 @@
+@startuml
+!include common.iuml
+left to right direction
+title Use cases - Supervisor, Admin and System
+actor Supervisor as S
+actor Admin as AD
+actor "SLA Monitor\n(timer)" as T
+S <|-- AD
+rectangle "Smart Complaint Management System" {
+  usecase "UC-06 Escalate complaint" as UC06
+  usecase "UC-08 View dashboard\n(KPIs, CSAT trend, CSV)" as UC08
+  usecase "View / filter\naudit log" as UCA
+  usecase "UC-09 Manage users" as UC09
+  usecase "UC-10 Configure SLA rules\n(per category + severity)" as UC10
+  usecase "Verify audit log\nintegrity" as UCV
+  usecase "UC-12 Monitor SLA\nand send alerts" as UC12
+  usecase "Auto-close unrated\ncomplaints (7 days)" as UCC
+  usecase "Send notifications\n(in-app, email, SMS)" as UCN
+}
+S --> UC06
+S --> UC08
+S --> UCA
+AD --> UC09
+AD --> UC10
+AD --> UCV
+T --> UC12
+T --> UCC
+UC12 ..> UCN : <<include>>
+UC06 ..> UCN : <<include>>
+UCC ..> UCN : <<include>>
+@enduml
