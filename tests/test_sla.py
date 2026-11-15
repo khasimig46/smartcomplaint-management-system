@@ -68,3 +68,80 @@ def test_alert_endpoints(app, make_user, login, citizen):
     assert alerts[0]["type"] == "breach" and alerts[0]["complaint_id"] == created["id"]
     assert c.get("/sla/violations", headers=sup).get_json()["violations"][0]["id"] == created["id"]
     assert c.get("/sla/alerts", headers=citizen).status_code == 403
+
+
+# ---------- Sprint 3 Task 6 (issue #31): rules per category and severity ----------
+def cat_comp(category, severity="Critical"):
+    c = {"id": "X", "category": category, "severity": severity, "status": "Assigned", "created_at": T0.isoformat()}
+    return sla.assign_deadline(c)
+
+
+def test_category_override_applies_only_to_that_category(app):
+    sla.save_rules({"by_category": {"Water Supply": {"Critical": 2}}}, categories=["Water Supply", "Roads"])
+    assert cat_comp("Water Supply")["sla"]["hours"] == 2
+    assert cat_comp("Water Supply")["sla"]["due_at"] == (T0 + timedelta(hours=2)).isoformat()
+    assert cat_comp("Roads")["sla"]["hours"] == 4                     # severity default
+    assert cat_comp("Water Supply", "High")["sla"]["hours"] == 24     # override is per severity
+
+
+def test_override_beats_changed_default_and_can_be_removed(app):
+    sla.save_rules({"Critical": 6, "by_category": {"Roads": {"Critical": 3}}})
+    assert sla.hours_for("Roads", "Critical") == 3 and sla.hours_for("Sanitation", "Critical") == 6
+    rules = sla.save_rules({"by_category": {"Roads": {"Critical": None}}})
+    assert "Roads" not in rules["by_category"] and sla.hours_for("Roads", "Critical") == 6
+
+
+def test_unknown_severity_falls_back_to_medium(app):
+    assert sla.hours_for("Roads", "Unknown") == 72
+
+
+def test_admin_sets_category_rule_and_new_complaints_use_it(app, make_user, login, citizen):
+    make_user("admin", email="adm@test.com")
+    c = app.test_client()
+    r = c.put("/sla/rules", json={"by_category": {"Water Supply": {"Critical": 2}}}, headers=login("adm@test.com"))
+    assert r.status_code == 200 and r.get_json()["by_category"] == {"Water Supply": {"Critical": 2}}
+    assert c.get("/sla/rules", headers=login("adm@test.com")).get_json()["by_category"]["Water Supply"]["Critical"] == 2
+    water = c.post("/submit-complaint", json=complaint_body(category="Water Supply", severity="Critical"), headers=citizen)
+    roads = c.post("/submit-complaint", json=complaint_body(category="Roads", severity="Critical"), headers=citizen)
+    assert water.get_json()["sla"]["hours"] == 2 and roads.get_json()["sla"]["hours"] == 4
+
+
+def test_invalid_category_rules_are_rejected_and_nothing_is_saved(app, make_user, login):
+    make_user("admin", email="adm@test.com")
+    c, adm = app.test_client(), login("adm@test.com")
+    for bad in ({"by_category": {"Teleportation": {"High": 5}}},        # unknown category
+                {"by_category": {"Roads": {"Urgent": 5}}},              # unknown severity
+                {"by_category": {"Roads": {"High": 0}}},                # not positive
+                {"by_category": {"Roads": {"High": "5"}}},              # not a number
+                {"by_category": {"Roads": 5}},                          # wrong shape
+                {"by_category": ["Roads"]},
+                {"High": 12, "by_category": {"Roads": {"High": -2}}}):  # valid part must not be saved either
+        r = c.put("/sla/rules", json=bad, headers=adm)
+        assert r.status_code == 400, bad
+    rules = c.get("/sla/rules", headers=adm).get_json()
+    assert rules["High"] == 24 and rules["by_category"] == {}
+
+
+def test_only_admin_can_change_category_rules(app, make_user, login):
+    make_user("supervisor", email="sup@test.com")
+    r = app.test_client().put("/sla/rules", json={"by_category": {"Roads": {"High": 5}}}, headers=login("sup@test.com"))
+    assert r.status_code == 403
+
+
+def test_escalation_uses_category_rule(app, make_user, login, citizen):
+    make_user("admin", email="adm@test.com"); make_user("supervisor", email="sup@test.com")
+    make_user("agent", email="ag@test.com", department="Water Department")
+    c = app.test_client()
+    comp = c.post("/submit-complaint", json=complaint_body(category="Water Supply", severity="High"), headers=citizen).get_json()
+    c.put("/sla/rules", json={"by_category": {"Water Supply": {"High": 6}}}, headers=login("adm@test.com"))
+    assert comp["sla"]["hours"] == 24                                 # existing complaints keep their deadline
+    sup = login("sup@test.com")
+    r = c.post(f"/complaints/{comp['id']}/escalate", headers=sup,
+               json={"reason": "Stalled for days", "department": "Water Department"})
+    assert r.status_code == 200, r.get_json()
+    assert r.get_json()["sla"]["hours"] == 6
+
+
+def test_sla_rules_page_is_served(app):
+    r = app.test_client().get("/sla/admin")
+    assert r.status_code == 200 and b"Overrides by category" in r.data

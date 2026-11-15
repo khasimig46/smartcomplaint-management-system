@@ -1,4 +1,10 @@
-"""Issue #9: SLA rules, deadlines, warning/breach alerts and compliance tracking."""
+"""Issue #9: SLA rules, deadlines, warning/breach alerts and compliance tracking.
+
+Sprint 3 Task 6 (issue #31): rules are per severity, with optional per-category overrides
+(FR-006 "category and severity", US-10, UC-10). Stored as
+    {"Critical": 4, "High": 24, ..., "by_category": {"Water Supply": {"Critical": 2}}}
+A complaint uses its category's override for its severity if one exists, otherwise the severity default.
+"""
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -22,26 +28,66 @@ def _parse(ts):
 def load_rules():
     rules = dict(DEFAULT_RULES)
     rules.update(storage.read_json(RULES_FILE, {}))
+    rules["by_category"] = {cat: dict(sev) for cat, sev in (rules.get("by_category") or {}).items()}
     return rules
+
+
+def _check_hours(label, hours):
+    if not isinstance(hours, (int, float)) or isinstance(hours, bool) or hours <= 0:
+        raise ValueError(f"Hours for {label} must be a positive number")
 
 
 @storage.synchronized
-def save_rules(updates):
+def save_rules(updates, categories=None):
+    """Apply admin changes. Severity keys set defaults; "by_category" sets overrides, and null removes one.
+
+    Validates everything before writing, so a bad entry leaves the stored rules unchanged.
+    """
+    if not isinstance(updates, dict):
+        raise ValueError("Rules must be a JSON object")
     rules = load_rules()
-    for severity, hours in updates.items():
-        if severity not in DEFAULT_RULES:
-            raise ValueError(f"Unknown severity '{severity}'")
-        if not isinstance(hours, (int, float)) or isinstance(hours, bool) or hours <= 0:
-            raise ValueError(f"Hours for {severity} must be a positive number")
-        rules[severity] = hours
+    for key, value in updates.items():
+        if key == "by_category":
+            if not isinstance(value, dict):
+                raise ValueError("by_category must map category -> {severity: hours}")
+            for category, per_severity in value.items():
+                if categories is not None and category not in categories:
+                    raise ValueError(f"Unknown category '{category}'")
+                if not isinstance(per_severity, dict):
+                    raise ValueError(f"Rules for {category} must map severity -> hours")
+                current = rules["by_category"].setdefault(category, {})
+                for severity, hours in per_severity.items():
+                    if severity not in DEFAULT_RULES:
+                        raise ValueError(f"Unknown severity '{severity}'")
+                    if hours is None:
+                        current.pop(severity, None)
+                        continue
+                    _check_hours(f"{category} / {severity}", hours)
+                    current[severity] = hours
+                if not current:
+                    del rules["by_category"][category]
+        elif key in DEFAULT_RULES:
+            _check_hours(key, value)
+            rules[key] = value
+        else:
+            raise ValueError(f"Unknown severity '{key}'")
     storage.write_json(RULES_FILE, rules)
     return rules
+
+
+def hours_for(category, severity, rules=None):
+    """Category override for this severity if set, else the severity default (Medium if severity is unknown)."""
+    rules = rules or load_rules()
+    override = rules["by_category"].get(category, {}).get(severity)
+    if override is not None:
+        return override
+    return rules.get(severity, DEFAULT_RULES["Medium"])
 
 
 # ---------- deadlines ----------
 def assign_deadline(complaint, start=None):
     start = start or _parse(complaint["created_at"])
-    hours = load_rules().get(complaint.get("severity"), DEFAULT_RULES["Medium"])
+    hours = hours_for(complaint.get("category"), complaint.get("severity"))
     complaint["sla"] = {"hours": hours, "started_at": start.isoformat(),
                         "due_at": (start + timedelta(hours=hours)).isoformat(),
                         "warned": False, "breached": False}

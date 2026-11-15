@@ -1,9 +1,10 @@
 import threading
 
-from flask import Blueprint, g, jsonify, request
+from flask import Blueprint, g, jsonify, render_template, request
 
 import routes.complaint_routes as cr
 from services import feedback, notifications, sla, storage
+from nlp.categorizer import get_categories
 from services.auth import STAFF_ROLES, roles_required
 
 bp = Blueprint("sla", __name__, url_prefix="/sla")
@@ -24,6 +25,12 @@ def run_check():
         return new
 
 
+@bp.get("/admin")
+def rules_page():
+    """Admin form for SLA rules (UC-10); the data calls below enforce the admin role."""
+    return render_template("sla_rules.html")
+
+
 @bp.get("/rules")
 @roles_required(*STAFF_ROLES)
 def get_rules():
@@ -34,7 +41,7 @@ def get_rules():
 @roles_required("admin")
 def put_rules():
     try:
-        return jsonify(sla.save_rules(request.get_json(silent=True) or {}))
+        return jsonify(sla.save_rules(request.get_json(silent=True) or {}, categories=get_categories()))
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
