@@ -1,4 +1,5 @@
 import threading
+import time
 
 import routes.complaint_routes as cr
 from conftest import complaint_body
@@ -87,5 +88,10 @@ def test_async_notifications_queue_delivery_and_update_status(app, make_user, mo
     assert records[0]["delivery"]["in_app"] == "delivered"
     assert records[0]["delivery"]["email"] == "queued"
     assert completed.wait(3)
-    latest = next(item for item in notifications._load() if item["id"] == records[0]["id"])
+    latest = None
+    for _ in range(40):
+        latest = next(item for item in notifications._load() if item["id"] == records[0]["id"])
+        if latest["delivery"]["email"] == "sent":
+            break
+        time.sleep(0.025)
     assert latest["delivery"]["email"] == "sent"
