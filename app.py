@@ -24,6 +24,8 @@ def create_app():
     def require_json_object():
         if request.is_json:
             payload = request.get_json(silent=True)
+            if payload is None and request.get_data(cache=True):
+                return jsonify({"error": "Malformed JSON request body"}), 400
             if payload is not None and not isinstance(payload, dict):
                 return jsonify({"error": "JSON request body must be an object"}), 400
 
