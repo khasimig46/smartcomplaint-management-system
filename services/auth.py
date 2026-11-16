@@ -48,7 +48,9 @@ def find_user(user_id=None, email=None):
 # ---------- registration / login ----------
 @storage.synchronized   # the duplicate-email check and the save must not interleave
 def create_user(name, email, password, role="citizen", department=None, zone=None):
-    name, email = (name or "").strip(), (email or "").strip().lower()
+    if not isinstance(name, str) or not isinstance(email, str) or not isinstance(password, str):
+        raise AuthError("Name, email and password must be text")
+    name, email = name.strip(), email.strip().lower()
     if not name:
         raise AuthError("Name is required")
     if not EMAIL_RE.match(email):
@@ -80,7 +82,9 @@ def create_user(name, email, password, role="citizen", department=None, zone=Non
 
 
 def authenticate(email, password):
-    user = find_user(email=(email or "").strip())
+    if not isinstance(email, str) or not isinstance(password, str):
+        raise AuthError("Invalid email or password", 401)
+    user = find_user(email=email.strip())
     if not user or not user["active"] or not bcrypt.checkpw((password or "").encode(), user["password_hash"].encode()):
         raise AuthError("Invalid email or password", 401)
     return user
