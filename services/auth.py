@@ -72,6 +72,7 @@ def create_user(name, email, password, role="citizen", department=None, zone=Non
         "zone": zone,
         "active": True,
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "auth_version": 0,
     }
     users.append(user)
     save_users(users)
@@ -88,7 +89,7 @@ def authenticate(email, password):
 # ---------- JWT ----------
 def issue_token(user):
     now = datetime.now(timezone.utc)
-    payload = {"sub": user["id"], "role": user["role"], "iat": now, "exp": now + timedelta(hours=TOKEN_HOURS)}
+    payload = {"sub": user["id"], "role": user["role"], "ver": user.get("auth_version", 0), "iat": now, "exp": now + timedelta(hours=TOKEN_HOURS)}
     return jwt.encode(payload, current_app.config["SECRET_KEY"], algorithm="HS256")
 
 
@@ -103,8 +104,8 @@ def _current_user():
     except jwt.InvalidTokenError:
         raise AuthError("Invalid token", 401)
     user = find_user(user_id=payload["sub"])
-    if not user or not user["active"]:
-        raise AuthError("Account not found or disabled", 401)
+    if not user or not user["active"] or payload.get("ver", 0) != user.get("auth_version", 0):
+        raise AuthError("Account not found, disabled, or session revoked", 401)
     return user
 
 
