@@ -43,6 +43,7 @@ def world(app, make_user, login):
 
 
 def submit(c, headers, **overrides):
+    overrides.setdefault("category", "Water Supply")
     return c.post("/submit-complaint", json=complaint_body(**overrides), headers=headers)
 
 
