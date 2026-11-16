@@ -11,7 +11,7 @@ def form(**overrides):
 
 
 def test_complaint_submitted_successfully(app, citizen):
-    r = app.test_client().post("/submit-complaint", json=form(), headers=citizen)
+    r = app.test_client().post("/submit-complaint", json=form(category="Water Supply"), headers=citizen)
     assert r.status_code == 201
     c = r.get_json()
     assert c["title"] == "Water leakage" and c["severity"] == "High"
