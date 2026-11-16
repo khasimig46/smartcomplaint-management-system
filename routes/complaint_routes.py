@@ -40,7 +40,13 @@ def categories():
 
 @bp.post("/suggest-category")
 def suggest():
-    text = (request.get_json(silent=True) or {}).get("text", "").strip()
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
+    text = payload.get("text", "")
+    if not isinstance(text, str):
+        return jsonify({"error": "Text must be a string"}), 400
+    text = text.strip()
     if not text:
         return jsonify({"error": "Complaint text is required"}), 400
     return jsonify(suggest_categories(text))
@@ -58,6 +64,10 @@ def submit():
         return jsonify({"error": "Validation failed", "fields": errors}), 400
 
     suggestions = suggest_categories(f"{fields['title']}. {fields['description']}")
+    if not fields["category"] and not suggestions[0]["confident"]:
+        return jsonify({"error": "The suggested category has less than 70% confidence. Please choose a category manually.",
+                        "fields": {"category": "Please select a category because the suggestion is not confident."},
+                        "suggestions": suggestions}), 400
     category = fields["category"] or suggestions[0]["category"]
     items = _load()
     ticket = generate_ticket_id(c["id"] for c in items)
