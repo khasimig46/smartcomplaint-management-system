@@ -1,0 +1,40 @@
+@startuml
+!include common.iuml
+title Sequence 2 - Resolve, rate and auto-close (UC-04, UC-03, FR-008, FR-013)
+autonumber
+actor Agent
+actor Citizen
+participant "complaint_routes" as R
+participant "Lifecycle" as LC
+participant "Feedback" as F
+participant "SLA monitor\n(run_check)" as M
+participant "Audit log" as AU
+participant "Notifications" as NO
+Agent -> R : PATCH /complaints/{id}/status\n{status: Resolved, note}
+R -> LC : allowed_by(agent) + change()
+alt no resolution notes
+  R --> Agent : 400 "Resolution notes are required"
+end
+R -> AU : record("status_changed")
+R -> NO : status_changed -> citizen\n"rate within 7 days"
+alt citizen rates within 7 days
+  Citizen -> R : POST /complaints/{id}/feedback\n{rating: 1-5, comment?}
+  R -> F : rate(complaint, user, rating, comment)
+  alt not owner
+    F --> R : PermissionError -> 403
+  else bad rating (0, 6, 4.5, "4", true)
+    F --> R : ValueError -> 400
+  else not Resolved / already rated / window over
+    F --> R : FeedbackError -> 409
+  end
+  F -> LC : change(Closed, by citizen)
+  R -> AU : record("complaint_rated")
+  R -> NO : agent told the rating
+  R --> Citizen : 200 complaint (Closed)
+else no rating for 7 days
+  M -> F : auto_close(complaints)
+  F -> LC : change(Closed, by "system")
+  M -> AU : record("auto_closed", actor=system)
+  M -> NO : citizen + agent notified
+end
+@enduml

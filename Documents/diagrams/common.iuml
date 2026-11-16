@@ -1,0 +1,14 @@
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam ArrowColor #333333
+skinparam UsecaseBackgroundColor #EEF2FF
+skinparam UsecaseBorderColor #4F46E5
+skinparam ActorBorderColor #111111
+skinparam ComponentBackgroundColor #F8FAFC
+skinparam ComponentBorderColor #334155
+skinparam DatabaseBackgroundColor #FEF9C3
+skinparam ParticipantBackgroundColor #F8FAFC
+skinparam SequenceLifeLineBorderColor #94A3B8
+skinparam NoteBackgroundColor #FFFBEB
+skinparam NoteBorderColor #D97706

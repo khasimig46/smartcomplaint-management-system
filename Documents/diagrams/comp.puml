@@ -1,0 +1,43 @@
+@startuml
+!include common.iuml
+title Component diagram - as built (modular monolith, layered)
+skinparam componentStyle uml2
+skinparam nodesep 25
+skinparam ranksep 45
+actor "Citizen / Agent /\nSupervisor / Admin" as U
+component "Web UI\n(Jinja pages + JavaScript)" as UI
+package "Flask application" {
+  component "REST API layer\n(routes/*: 9 blueprints,\nJWT check + RBAC decorators)" as API
+  component "Identity & Access\n(auth: bcrypt, JWT, roles)" as IA
+  component "Complaint\n(schema, ticket ID, lifecycle,\nresolution, replies, feedback)" as CS
+  component "Categoriser\n(nlp: TF-IDF + logistic\nregression, top-3)" as NLP
+  component "Routing & SLA\n(routing, SLA rules + monitor,\nescalation)" as RS
+  component "Notification\n(in-app, email, SMS)" as NS
+  component "Analytics\n(KPIs, CSAT trend, CSV)" as AN
+  component "Audit\n(hash-chained log)" as AU
+  component "Storage\n(RLock + atomic writes)" as ST
+}
+database "data/*.json\n(complaints, users,\nnotifications, SLA rules)" as DB
+database "data/audit_log.jsonl\n(append-only)" as AL
+folder "uploads/\n(images, evidence)" as UP
+cloud "SMTP / SMS\nproviders" as EXT
+U --> UI
+UI --> API : HTTPS, JSON,\nBearer JWT
+API --> IA
+API --> CS
+API --> AN
+API --> AU
+CS --> NLP : ICategorise
+CS --> RS : IRouting
+CS --> NS : INotify
+RS --> NS
+CS --> ST
+RS --> ST
+NS --> ST
+IA --> ST
+AN ..> CS : reads complaints
+ST --> DB
+AU --> AL
+CS --> UP
+NS --> EXT
+@enduml

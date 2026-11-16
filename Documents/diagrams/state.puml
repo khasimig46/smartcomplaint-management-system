@@ -1,0 +1,15 @@
+@startuml
+!include common.iuml
+title Complaint lifecycle (FR-005)
+[*] --> New : citizen submits
+New --> Assigned : routed to agent
+Assigned --> InProgress : agent starts work
+InProgress --> PendingInfo : agent asks citizen
+PendingInfo --> InProgress : citizen replies\n(Sprint 3 Task 7)
+InProgress --> Resolved : agent resolves\n(notes required)
+Resolved --> InProgress : citizen reopens
+Resolved --> Closed : citizen rates or closes;\nsystem after 7 days
+Closed --> [*]
+state "In Progress" as InProgress
+state "Pending Info" as PendingInfo
+@enduml

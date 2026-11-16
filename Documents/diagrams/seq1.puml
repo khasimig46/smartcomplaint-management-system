@@ -1,0 +1,45 @@
+@startuml
+!include common.iuml
+title Sequence 1 - Submit complaint (UC-01, FR-001 to FR-004, FR-007, FR-012)
+autonumber
+actor Citizen
+participant "Web UI" as UI
+participant "complaint_routes\nPOST /submit-complaint" as R
+participant "Auth/RBAC" as A
+participant "Storage LOCK" as L
+participant "Schema" as V
+participant "Categoriser" as N
+participant "Ticket ID" as T
+participant "Routing" as RT
+participant "SLA" as S
+participant "Audit log" as AU
+participant "Notifications" as NO
+Citizen -> UI : fill title, description,\nseverity, images, GPS
+UI -> R : multipart form + Bearer JWT
+R -> A : roles_required("citizen")
+alt token missing / invalid / wrong role
+  A --> UI : 401 / 403 {error}
+end
+R -> L : acquire (re-entrant lock)
+R -> V : validate(form, images)
+alt validation fails
+  V --> R : errors
+  R --> UI : 400 {error, fields}
+end
+R -> N : suggest_categories(title + description)
+N --> R : top-3 with confidence
+note right of R : citizen's category wins;\nelse top suggestion
+R -> T : generate_ticket_id(existing IDs)
+T --> R : SCMS-YYYYMMDD-NNNNN
+R -> RT : route(category, users, zone)
+RT --> R : department, least-loaded agent\n(or needs_supervisor)
+R -> S : assign_deadline()\n(category override or severity default)
+R -> L : write_json (temp file + os.replace)
+R -> AU : record("complaint_submitted")
+R -> NO : complaint_submitted()
+NO -> NO : in-app + email/SMS per prefs\n(failure logged, not raised)
+R -> L : release
+note over R, NO : The lock is held for the whole request, so a slow\nSMTP/SMS provider delays other writes (known limitation).
+R --> UI : 201 complaint JSON
+UI --> Citizen : ticket ID + category
+@enduml

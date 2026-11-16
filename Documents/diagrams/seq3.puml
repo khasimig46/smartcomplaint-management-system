@@ -1,0 +1,28 @@
+@startuml
+!include common.iuml
+title Sequence 3 - Escalate stalled complaint (UC-06, FR-009)
+autonumber
+actor Supervisor
+participant "escalation_routes\nPOST /complaints/{id}/escalate" as R
+participant "Escalation" as E
+participant "Routing" as RT
+participant "SLA" as S
+participant "Audit log" as AU
+participant "Notifications" as NO
+Supervisor -> R : {reason, department}
+R -> E : escalate(complaint, user, reason, dept)
+alt complaint not open / empty reason / unknown team
+  E --> R : ValueError
+  R --> Supervisor : 400 {error}
+end
+E -> RT : pick_agent(department, zone)
+alt no active agent in team
+  E --> R : ValueError
+  R --> Supervisor : 400 "No active agent is available"
+end
+E -> S : assign_deadline(start = now)
+E -> E : escalated = true\n(priority queue first in agent work queue)
+R -> AU : record("complaint_escalated")
+R -> NO : citizen (no reason shown), new agent,\nprevious agent if changed
+R --> Supervisor : 200 complaint
+@enduml
