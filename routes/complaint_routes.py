@@ -112,6 +112,8 @@ def submit():
 def override():
     data = request.get_json(silent=True) or {}
     cid, category = data.get("complaint_id"), data.get("category")
+    if not isinstance(cid, str) or not isinstance(category, str):
+        return jsonify({"error": "Complaint ID and category must be text"}), 400
     if category not in get_categories():
         return jsonify({"error": "Invalid category"}), 400
     items = _load()
@@ -177,7 +179,11 @@ def get_complaint(cid):
 @storage.synchronized
 def update_status(cid):
     data = request.get_json(silent=True) or {}
-    new_status, note = data.get("status"), (data.get("note") or "").strip() or None
+    new_status = data.get("status")
+    raw_note = data.get("note")
+    if raw_note is not None and not isinstance(raw_note, str):
+        return jsonify({"error": "Note must be text"}), 400
+    note = raw_note.strip() or None if isinstance(raw_note, str) else None
     items = _load()
     for c in items:
         if c["id"] == cid:
