@@ -5,6 +5,8 @@ TWILIO_AUTH_TOKEN and TWILIO_FROM are set. Otherwise the message is written to t
 """
 import base64
 import logging
+import queue
+import threading
 import os
 import re
 import smtplib
@@ -32,6 +34,9 @@ SUBJECTS = {
 }
 log = logging.getLogger("scms.notifications")
 _lock = storage.LOCK
+_delivery_queue = queue.Queue()
+_worker = None
+_worker_lock = threading.Lock()
 
 
 def _load():
@@ -94,6 +99,8 @@ def update_preferences(user_id, data):
     user = next(u for u in users if u["id"] == user_id)
     prefs = preferences(user)
     if "phone" in data:
+        if data["phone"] is not None and not isinstance(data["phone"], str):
+            raise ValueError("Phone must be text")
         phone = (data["phone"] or "").strip().replace(" ", "") or None
         if phone and not PHONE_RE.match(phone):
             raise ValueError("Phone must be in international format, e.g. +919876543210")
@@ -121,12 +128,51 @@ def _email_body(message, complaint):
     return "\n".join(lines)
 
 
+def _update_delivery(notification_id, channel, status):
+    with _lock:
+        items = _load()
+        for item in items:
+            if item["id"] == notification_id:
+                item.setdefault("delivery", {})[channel] = status
+                break
+        _save(items)
+
+
+def _deliver_queued(notification_id, channel, send, args):
+    status = _deliver(send, *args)
+    _update_delivery(notification_id, channel, status)
+
+
+def process_delivery_queue():
+    """Background worker. Provider errors are recorded and never escape into request handlers."""
+    while True:
+        task = _delivery_queue.get()
+        if task is None:
+            _delivery_queue.task_done()
+            return
+        notification_id, channel, send, args = task
+        try:
+            _deliver_queued(notification_id, channel, send, args)
+        finally:
+            _delivery_queue.task_done()
+
+
+def start_delivery_worker():
+    global _worker
+    with _worker_lock:
+        if _worker is None or not _worker.is_alive():
+            _worker = threading.Thread(target=process_delivery_queue, name="scms-notification-worker", daemon=True)
+            _worker.start()
+    return _worker
+
+
 def notify(user_ids, kind, message, complaint=None):
-    """Notify each user in-app, plus email / SMS per their preferences. Returns the stored notifications."""
+    """Persist in-app notifications immediately; deliver email/SMS inline or through the worker."""
     users = {u["id"]: u for u in auth.load_users()}
     subject = f"[SCMS] {complaint['id'] + ': ' if complaint else ''}{SUBJECTS.get(kind, 'Update')}"
     now = datetime.now(timezone.utc).isoformat()
-    records = []
+    asynchronous = os.environ.get("NOTIFY_ASYNC", "1").strip() != "0"
+    records, tasks = [], []
     for uid in dict.fromkeys(user_ids):
         user = users.get(uid)
         if not user or not user.get("active", True):
@@ -134,17 +180,30 @@ def notify(user_ids, kind, message, complaint=None):
         prefs = preferences(user)
         delivery = {"in_app": "delivered"}
         if prefs["email"]:
-            delivery["email"] = _deliver(send_email, user["email"], subject, _email_body(message, complaint))
+            delivery["email"] = "queued" if asynchronous else "pending"
         if prefs["sms"] and prefs["phone"]:
-            delivery["sms"] = _deliver(send_sms, prefs["phone"], f"SCMS: {message}")
-        records.append({"id": "N-" + uuid.uuid4().hex[:10], "user_id": uid, "type": kind,
-                        "complaint_id": complaint["id"] if complaint else None, "message": message,
-                        "created_at": now, "read": False, "delivery": delivery})
+            delivery["sms"] = "queued" if asynchronous else "pending"
+        record = {"id": "N-" + uuid.uuid4().hex[:10], "user_id": uid, "type": kind,
+                  "complaint_id": complaint["id"] if complaint else None, "message": message,
+                  "created_at": now, "read": False, "delivery": delivery}
+        records.append(record)
+        if prefs["email"]:
+            tasks.append((record["id"], "email", send_email, (user["email"], subject, _email_body(message, complaint))))
+        if prefs["sms"] and prefs["phone"]:
+            tasks.append((record["id"], "sms", send_sms, (prefs["phone"], f"SCMS: {message}")))
     if records:
         with _lock:
             items = _load()
             items.extend(records)
             _save(items)
+    if asynchronous:
+        if tasks:
+            start_delivery_worker()
+            for task in tasks:
+                _delivery_queue.put(task)
+    else:
+        for task in tasks:
+            _deliver_queued(*task)
     return records
 
 

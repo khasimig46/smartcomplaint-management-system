@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, render_template
+from flask import Flask, jsonify, render_template, request
 
 from routes.audit_routes import bp as audit_bp
 from routes.auth_routes import bp as auth_bp
@@ -12,11 +12,27 @@ from routes.notification_routes import bp as notifications_bp
 from routes.resolution_routes import bp as resolution_bp
 from routes.sla_routes import bp as sla_bp, start_monitor
 from services.auth import seed_admin_from_env
+from services import notifications
+from werkzeug.exceptions import HTTPException
 
 
 def create_app():
     app = Flask(__name__)
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-only-change-me")
+    app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("MAX_CONTENT_LENGTH", 30 * 1024 * 1024))
+    @app.before_request
+    def require_json_object():
+        if request.is_json:
+            payload = request.get_json(silent=True)
+            if payload is None and request.get_data(cache=True):
+                return jsonify({"error": "Malformed JSON request body"}), 400
+            if payload is not None and not isinstance(payload, dict):
+                return jsonify({"error": "JSON request body must be an object"}), 400
+
+    @app.errorhandler(HTTPException)
+    def json_http_error(error):
+        return jsonify({"error": error.description}), error.code
+
     app.register_blueprint(auth_bp)
     app.register_blueprint(bp)
     app.register_blueprint(sla_bp)
@@ -47,4 +63,5 @@ app = create_app()
 
 if __name__ == "__main__":
     start_monitor(app)  # background SLA checks every 60 s
-    app.run(debug=True, use_reloader=False)
+    notifications.start_delivery_worker()
+    app.run(debug=os.environ.get('FLASK_DEBUG', '0') == '1', use_reloader=False)

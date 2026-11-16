@@ -40,7 +40,13 @@ def categories():
 
 @bp.post("/suggest-category")
 def suggest():
-    text = (request.get_json(silent=True) or {}).get("text", "").strip()
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
+    text = payload.get("text", "")
+    if not isinstance(text, str):
+        return jsonify({"error": "Text must be a string"}), 400
+    text = text.strip()
     if not text:
         return jsonify({"error": "Complaint text is required"}), 400
     return jsonify(suggest_categories(text))
@@ -58,6 +64,10 @@ def submit():
         return jsonify({"error": "Validation failed", "fields": errors}), 400
 
     suggestions = suggest_categories(f"{fields['title']}. {fields['description']}")
+    if not fields["category"] and not suggestions[0]["confident"]:
+        return jsonify({"error": "The suggested category has less than 70% confidence. Please choose a category manually.",
+                        "fields": {"category": "Please select a category because the suggestion is not confident."},
+                        "suggestions": suggestions}), 400
     category = fields["category"] or suggestions[0]["category"]
     items = _load()
     ticket = generate_ticket_id(c["id"] for c in items)
@@ -102,6 +112,8 @@ def submit():
 def override():
     data = request.get_json(silent=True) or {}
     cid, category = data.get("complaint_id"), data.get("category")
+    if not isinstance(cid, str) or not isinstance(category, str):
+        return jsonify({"error": "Complaint ID and category must be text"}), 400
     if category not in get_categories():
         return jsonify({"error": "Invalid category"}), 400
     items = _load()
@@ -110,14 +122,24 @@ def override():
             if not _can_view(g.user, c):
                 return jsonify({"error": "You do not have permission to do this"}), 403
             previous_category = c["category"]
+            started = c.get("status", "New") not in ("New", "Assigned")
+            if g.user["role"] == "citizen" and started:
+                return jsonify({"error": "Category cannot be changed after work has started"}), 409
             c["category"], c["overridden"] = category, True
             others = [o for o in items if o["id"] != cid]
             previous_agent = c.get("assigned_to")
-            if c.get("status", "New") in ("New", "Assigned"):  # re-route only before work starts
-                c.update(route(category, load_users(), others, zone=c.get("zone")))
-                if c["assigned_to"] and c.get("status") == "New":
+            if not started:
+                assignment = route(category, load_users(), others, zone=c.get("zone"))
+                c.update(assignment)
+                if not c.get("assigned_to"):
+                    c["needs_supervisor"] = True
+                    c["status"] = "New"
+                elif c.get("status") == "New":
                     lifecycle.change(c, "Assigned", "system", f"Auto-assigned to {c['assigned_to']}")
             _save(items)
+            if not c.get("assigned_to"):
+                notifications.notify(notifications.supervisors(), "needs_supervisor",
+                    f"Complaint {c['id']} needs manual assignment after category change.", c)
             audit.record("category_overridden", g.user["id"], cid, from_category=previous_category, to_category=category,
                          assigned_to=c.get("assigned_to"))
             if c.get("assigned_to") and c["assigned_to"] != previous_agent:
@@ -157,13 +179,19 @@ def get_complaint(cid):
 @storage.synchronized
 def update_status(cid):
     data = request.get_json(silent=True) or {}
-    new_status, note = data.get("status"), (data.get("note") or "").strip() or None
+    new_status = data.get("status")
+    raw_note = data.get("note")
+    if raw_note is not None and not isinstance(raw_note, str):
+        return jsonify({"error": "Note must be text"}), 400
+    note = raw_note.strip() or None if isinstance(raw_note, str) else None
     items = _load()
     for c in items:
         if c["id"] == cid:
             if not lifecycle.allowed_by(g.user, c, new_status):
                 return jsonify({"error": "You do not have permission to make this change"}), 403
             old_status = c.get("status")
+            if new_status == "Assigned" and not c.get("assigned_to"):
+                return jsonify({"error": "A complaint cannot be Assigned without an assigned agent"}), 400
             try:
                 resolution.change_status(c, g.user, new_status, note)
             except (lifecycle.TransitionError, ValueError) as e:

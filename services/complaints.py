@@ -17,10 +17,16 @@ def image_extension(head: bytes):
 def validate(form, images, categories):
     """Return (cleaned_fields, errors). `images` is a list of (filename, bytes)."""
     errors = {}
-    title = (form.get("title") or "").strip()
-    description = (form.get("description") or "").strip()
-    severity = (form.get("severity") or "").strip().title()
-    category = (form.get("category") or "").strip() or None
+    raw_title, raw_description = form.get("title", ""), form.get("description", "")
+    raw_severity, raw_category = form.get("severity", ""), form.get("category", "")
+    for key, value in (("title", raw_title), ("description", raw_description),
+                       ("severity", raw_severity), ("category", raw_category)):
+        if value is not None and not isinstance(value, str):
+            errors[key] = "Must be text"
+    title = raw_title.strip() if isinstance(raw_title, str) else ""
+    description = raw_description.strip() if isinstance(raw_description, str) else ""
+    severity = raw_severity.strip().title() if isinstance(raw_severity, str) else ""
+    category = (raw_category.strip() or None) if isinstance(raw_category, str) else None
 
     if not title:
         errors["title"] = "Title is required"
@@ -57,6 +63,10 @@ def validate(form, images, categories):
                 errors["images"] = f"{name} is not a JPEG or PNG image"
                 break
 
+    raw_zone = form.get("zone")
+    if raw_zone is not None and not isinstance(raw_zone, str):
+        errors["zone"] = "Must be text"
+    zone = raw_zone.strip() or None if isinstance(raw_zone, str) else None
     cleaned = {"title": title, "description": description, "severity": severity,
-               "category": category, "location": location, "zone": (form.get("zone") or "").strip() or None}
+               "category": category, "location": location, "zone": zone}
     return cleaned, errors

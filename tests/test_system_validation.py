@@ -43,6 +43,7 @@ def world(app, make_user, login):
 
 
 def submit(c, headers, **overrides):
+    overrides.setdefault("category", "Water Supply")
     return c.post("/submit-complaint", json=complaint_body(**overrides), headers=headers)
 
 
@@ -109,7 +110,7 @@ def test_sv02_submission_validation_and_limits(world):
     r = c.post("/submit-complaint", json={"title": "", "description": "", "severity": ""}, headers=hdr["citizen"])
     assert r.status_code == 400 and {"title", "description", "severity"} <= set(r.get_json()["fields"])
 
-    assert submit(c, hdr["citizen"], title="T" * 120, description="D" * 2000).status_code == 201
+    assert submit(c, hdr["citizen"], title="T" * 120, description="D" * 2000, category="Water Supply").status_code == 201
     assert "title" in submit(c, hdr["citizen"], title="T" * 121).get_json()["fields"]
     assert "description" in submit(c, hdr["citizen"], description="D" * 2001).get_json()["fields"]
 

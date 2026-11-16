@@ -11,6 +11,7 @@ import jwt
 from flask import current_app, g, jsonify, request
 
 from services import storage
+from services.routing import DEPARTMENTS, DEFAULT_DEPARTMENT
 
 ROLES = ("citizen", "agent", "supervisor", "admin")
 STAFF_ROLES = ("agent", "supervisor", "admin")
@@ -48,7 +49,9 @@ def find_user(user_id=None, email=None):
 # ---------- registration / login ----------
 @storage.synchronized   # the duplicate-email check and the save must not interleave
 def create_user(name, email, password, role="citizen", department=None, zone=None):
-    name, email = (name or "").strip(), (email or "").strip().lower()
+    if not isinstance(name, str) or not isinstance(email, str) or not isinstance(password, str):
+        raise AuthError("Name, email and password must be text")
+    name, email = name.strip(), email.strip().lower()
     if not name:
         raise AuthError("Name is required")
     if not EMAIL_RE.match(email):
@@ -57,8 +60,8 @@ def create_user(name, email, password, role="citizen", department=None, zone=Non
         raise AuthError("Password must be at least 8 characters")
     if role not in ROLES:
         raise AuthError(f"Role must be one of {', '.join(ROLES)}")
-    if role == "agent" and not department:
-        raise AuthError("Agents must belong to a department")
+    if role == "agent" and department not in {*DEPARTMENTS.values(), DEFAULT_DEPARTMENT}:
+        raise AuthError("Agents must belong to a valid department")
     users = load_users()
     if any(u["email"] == email for u in users):
         raise AuthError("An account with this email already exists", 409)
@@ -72,6 +75,7 @@ def create_user(name, email, password, role="citizen", department=None, zone=Non
         "zone": zone,
         "active": True,
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "auth_version": 0,
     }
     users.append(user)
     save_users(users)
@@ -79,7 +83,9 @@ def create_user(name, email, password, role="citizen", department=None, zone=Non
 
 
 def authenticate(email, password):
-    user = find_user(email=(email or "").strip())
+    if not isinstance(email, str) or not isinstance(password, str):
+        raise AuthError("Invalid email or password", 401)
+    user = find_user(email=email.strip())
     if not user or not user["active"] or not bcrypt.checkpw((password or "").encode(), user["password_hash"].encode()):
         raise AuthError("Invalid email or password", 401)
     return user
@@ -88,7 +94,7 @@ def authenticate(email, password):
 # ---------- JWT ----------
 def issue_token(user):
     now = datetime.now(timezone.utc)
-    payload = {"sub": user["id"], "role": user["role"], "iat": now, "exp": now + timedelta(hours=TOKEN_HOURS)}
+    payload = {"sub": user["id"], "role": user["role"], "ver": user.get("auth_version", 0), "iat": now, "exp": now + timedelta(hours=TOKEN_HOURS)}
     return jwt.encode(payload, current_app.config["SECRET_KEY"], algorithm="HS256")
 
 
@@ -103,8 +109,8 @@ def _current_user():
     except jwt.InvalidTokenError:
         raise AuthError("Invalid token", 401)
     user = find_user(user_id=payload["sub"])
-    if not user or not user["active"]:
-        raise AuthError("Account not found or disabled", 401)
+    if not user or not user["active"] or payload.get("ver", 0) != user.get("auth_version", 0):
+        raise AuthError("Account not found, disabled, or session revoked", 401)
     return user
 
 

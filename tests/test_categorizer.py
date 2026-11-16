@@ -23,7 +23,7 @@ def test_correct_category_ranked_first():
 
 
 def test_user_can_override_suggestion(client, citizen):
-    body = {"title": "Garbage", "description": "Garbage not collected", "severity": "Low"}
+    body = {"title": "Garbage", "description": "Garbage not collected", "severity": "Low", "category": "Sanitation"}
     c = client.post("/submit-complaint", json=body, headers=citizen).get_json()
     r = client.post("/override-category", json={"complaint_id": c["id"], "category": "Roads"}, headers=citizen)
     assert r.get_json()["category"] == "Roads"
