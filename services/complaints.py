@@ -63,6 +63,10 @@ def validate(form, images, categories):
                 errors["images"] = f"{name} is not a JPEG or PNG image"
                 break
 
+    raw_zone = form.get("zone")
+    if raw_zone is not None and not isinstance(raw_zone, str):
+        errors["zone"] = "Must be text"
+    zone = raw_zone.strip() or None if isinstance(raw_zone, str) else None
     cleaned = {"title": title, "description": description, "severity": severity,
-               "category": category, "location": location, "zone": (form.get("zone") or "").strip() or None}
+               "category": category, "location": location, "zone": zone}
     return cleaned, errors
