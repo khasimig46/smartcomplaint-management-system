@@ -15,7 +15,7 @@ const showErrors = (fields) => Object.entries(fields || {}).forEach(([k, v]) => 
 
 async function loadCategories() {
   const cats = await (await fetch("/categories")).json();
-  $("categorySelect").innerHTML = cats.map((c) => `<option>${c}</option>`).join("");
+  $("categorySelect").innerHTML = `<option value="">Choose a category...</option>` + cats.map((c) => `<option>${c}</option>`).join("");
 }
 
 $("gpsBtn").addEventListener("click", () => {
@@ -38,7 +38,12 @@ $("suggestBtn").addEventListener("click", async () => {
       <strong>${i + 1}. ${s.category}</strong> &mdash; ${s.confidence}% confidence
       <div class="bar"><div style="width:${s.confidence}%"></div></div>
     </div>`).join("");
-  $("categorySelect").value = data[0].category;   // pre-select top suggestion
+  const confident = Boolean(data[0].confident);
+  $("categorySelect").value = confident ? data[0].category : "";
+  $("confidenceMessage").textContent = confident
+    ? "The top suggestion meets the 70% confidence threshold. You can still change it."
+    : "The suggestion is below 70% confidence. Please choose the category yourself before submitting.";
+  $("confidenceMessage").className = confident ? "ok" : "err";
   $("results").classList.remove("hidden");
 });
 
@@ -48,7 +53,7 @@ $("submitBtn").addEventListener("click", async () => {
   fd.append("title", $("title").value);
   fd.append("description", $("description").value);
   fd.append("severity", $("severity").value);
-  fd.append("category", $("categorySelect").value);
+  if ($("categorySelect").value) fd.append("category", $("categorySelect").value);
   if (gps) { fd.append("latitude", gps.latitude); fd.append("longitude", gps.longitude); }
   for (const f of $("images").files) fd.append("images", f);
   const res = await fetch("/submit-complaint", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd });
