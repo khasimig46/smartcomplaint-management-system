@@ -134,7 +134,7 @@ def update_user(user_id):
                 return jsonify({"error": "Invalid role"}), 400
             updated[key] = value
         elif key == "department":
-            if value is not None and value not in {*DEPARTMENTS.values(), DEFAULT_DEPARTMENT}:
+            if value is not None and (not isinstance(value, str) or value not in {*DEPARTMENTS.values(), DEFAULT_DEPARTMENT}):
                 return jsonify({"error": "Unknown department"}), 400
             updated[key] = value
         elif key == "zone":
