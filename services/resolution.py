@@ -56,9 +56,13 @@ def change_status(complaint, user, new_status, note=None):
 
 def for_viewer(user, complaint):
     """Citizens never see internal notes."""
-    if user["role"] != "citizen" or "notes" not in complaint:
+    if user["role"] != "citizen":
         return complaint
-    return {k: v for k, v in complaint.items() if k != "notes"}
+    hidden = {"notes", "alerts", "escalations"}
+    visible = {k: v for k, v in complaint.items() if k not in hidden}
+    if complaint.get("escalated"):
+        visible["escalated"] = True
+    return visible
 
 
 def queue(complaints, agent_id, include_done=False, now=None):
