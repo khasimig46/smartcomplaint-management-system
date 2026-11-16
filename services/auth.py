@@ -11,6 +11,7 @@ import jwt
 from flask import current_app, g, jsonify, request
 
 from services import storage
+from services.routing import DEPARTMENTS, DEFAULT_DEPARTMENT
 
 ROLES = ("citizen", "agent", "supervisor", "admin")
 STAFF_ROLES = ("agent", "supervisor", "admin")
@@ -59,8 +60,8 @@ def create_user(name, email, password, role="citizen", department=None, zone=Non
         raise AuthError("Password must be at least 8 characters")
     if role not in ROLES:
         raise AuthError(f"Role must be one of {', '.join(ROLES)}")
-    if role == "agent" and not department:
-        raise AuthError("Agents must belong to a department")
+    if role == "agent" and department not in {*DEPARTMENTS.values(), DEFAULT_DEPARTMENT}:
+        raise AuthError("Agents must belong to a valid department")
     users = load_users()
     if any(u["email"] == email for u in users):
         raise AuthError("An account with this email already exists", 409)
