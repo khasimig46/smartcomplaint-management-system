@@ -1,21 +1,99 @@
-........................................................................ [ 63%]
-..........................................                               [100%]
+........................................................................ [ 40%]
+........................................................................ [ 80%]
+...................................                                      [100%]
+=============================== warnings summary ===============================
+tests/test_audit.py: 12 warnings
+tests/test_auth.py: 4 warnings
+tests/test_categorizer.py: 1 warning
+tests/test_citizen_reply.py: 10 warnings
+tests/test_dashboard.py: 2 warnings
+tests/test_escalation.py: 10 warnings
+tests/test_evidence.py: 7 warnings
+tests/test_feedback.py: 23 warnings
+tests/test_notifications.py: 10 warnings
+tests/test_resolution.py: 9 warnings
+tests/test_routing.py: 1 warning
+tests/test_sla.py: 7 warnings
+tests/test_status.py: 7 warnings
+tests/test_storage.py: 7 warnings
+tests/test_submission.py: 8 warnings
+tests/test_system_validation.py: 18 warnings
+tests/test_ticket_id.py: 1 warning
+  /usr/local/lib/python3.13/site-packages/jwt/api_jwt.py:149: InsecureKeyLengthWarning: The HMAC key is 11 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+    return self._jws.encode(
+
+tests/test_audit.py: 12 warnings
+tests/test_auth.py: 4 warnings
+tests/test_categorizer.py: 1 warning
+tests/test_citizen_reply.py: 10 warnings
+tests/test_dashboard.py: 2 warnings
+tests/test_escalation.py: 10 warnings
+tests/test_evidence.py: 7 warnings
+tests/test_feedback.py: 23 warnings
+tests/test_notifications.py: 10 warnings
+tests/test_resolution.py: 9 warnings
+tests/test_routing.py: 1 warning
+tests/test_sla.py: 7 warnings
+tests/test_status.py: 7 warnings
+tests/test_storage.py: 7 warnings
+tests/test_submission.py: 8 warnings
+tests/test_system_validation.py: 18 warnings
+tests/test_ticket_id.py: 1 warning
+  /usr/local/lib/python3.13/site-packages/jwt/api_jwt.py:370: InsecureKeyLengthWarning: The HMAC key is 11 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+    decoded = self.decode_complete(
+
+tests/test_audit.py::test_full_complaint_lifecycle_is_recorded_with_actor_and_time
+  /usr/local/lib/python3.13/site-packages/sklearn/base.py:525: InconsistentVersionWarning: Trying to unpickle estimator TfidfTransformer from version 1.8.0 when using version 1.9.1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+  https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+    warnings.warn(
+
+tests/test_audit.py::test_full_complaint_lifecycle_is_recorded_with_actor_and_time
+  /usr/local/lib/python3.13/site-packages/sklearn/base.py:525: InconsistentVersionWarning: Trying to unpickle estimator TfidfVectorizer from version 1.8.0 when using version 1.9.1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+  https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+    warnings.warn(
+
+tests/test_audit.py::test_full_complaint_lifecycle_is_recorded_with_actor_and_time
+  /usr/local/lib/python3.13/site-packages/sklearn/base.py:525: InconsistentVersionWarning: Trying to unpickle estimator LogisticRegression from version 1.8.0 when using version 1.9.1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+  https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+    warnings.warn(
+
+tests/test_audit.py::test_full_complaint_lifecycle_is_recorded_with_actor_and_time
+  /usr/local/lib/python3.13/site-packages/sklearn/base.py:525: InconsistentVersionWarning: Trying to unpickle estimator Pipeline from version 1.8.0 when using version 1.9.1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+  https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
 ==================================== PASSES ====================================
 _________________ test_provider_failure_does_not_break_request _________________
 ------------------------------ Captured log call -------------------------------
-WARNING  scms.notifications:notifications.py:83 Notification delivery failed: SMTP server unreachable
+WARNING  scms.notifications:notifications.py:81 Notification delivery failed: SMTP server unreachable
 ________________________ test_sv10_response_time_smoke _________________________
 ----------------------------- Captured stdout call -----------------------------
 
-SV-10 latency over 200 requests: median 0.8 ms, p99 1.1 ms
+SV-10 latency over 200 requests: median 1.3 ms, p99 2.6 ms
 ================================ tests coverage ================================
-_______________ coverage: platform linux, python 3.12.3-final-0 ________________
+_______________ coverage: platform linux, python 3.13.18-final-0 _______________
 
 Coverage HTML written to dir /home/claude/scms/docs/reports/coverage-html
 Coverage XML written to file /home/claude/scms/docs/reports/coverage.xml
 Coverage JSON written to file /home/claude/scms/docs/reports/coverage.json
 - Generated html report: file:///home/claude/scms/docs/reports/unit-test-report.html -
 =========================== short test summary info ============================
+PASSED tests/test_audit.py::test_full_complaint_lifecycle_is_recorded_with_actor_and_time
+PASSED tests/test_audit.py::test_escalation_is_recorded
+PASSED tests/test_audit.py::test_system_actions_are_recorded_as_system
+PASSED tests/test_audit.py::test_auto_close_is_recorded
+PASSED tests/test_audit.py::test_logins_failed_logins_and_admin_actions_are_recorded
+PASSED tests/test_audit.py::test_global_log_is_staff_only_and_filterable
+PASSED tests/test_audit.py::test_complaint_log_access_rules
+PASSED tests/test_audit.py::test_no_update_or_delete_endpoints
+PASSED tests/test_audit.py::test_verify_passes_on_untouched_log
+PASSED tests/test_audit.py::test_edited_entry_is_detected
+PASSED tests/test_audit.py::test_edited_entry_with_recomputed_hash_breaks_the_chain
+PASSED tests/test_audit.py::test_deleted_or_reordered_entries_are_detected
+PASSED tests/test_audit.py::test_chain_continues_across_writes
+PASSED tests/test_audit.py::test_empty_log_verifies
+PASSED tests/test_audit.py::test_audit_page_is_served
 PASSED tests/test_auth.py::test_user_can_register
 PASSED tests/test_auth.py::test_password_is_hashed_with_bcrypt
 PASSED tests/test_auth.py::test_duplicate_email_rejected
@@ -31,6 +109,16 @@ PASSED tests/test_categorizer.py::test_confidence_score_present
 PASSED tests/test_categorizer.py::test_correct_category_ranked_first
 PASSED tests/test_categorizer.py::test_user_can_override_suggestion
 PASSED tests/test_categorizer.py::test_empty_text_rejected
+PASSED tests/test_citizen_reply.py::test_reply_is_logged_and_work_resumes
+PASSED tests/test_citizen_reply.py::test_agent_is_notified_with_the_reply
+PASSED tests/test_citizen_reply.py::test_only_the_owner_can_reply
+PASSED tests/test_citizen_reply.py::test_reply_only_while_pending_info
+PASSED tests/test_citizen_reply.py::test_reply_text_is_validated[]
+PASSED tests/test_citizen_reply.py::test_reply_text_is_validated[   ]
+PASSED tests/test_citizen_reply.py::test_reply_text_is_validated[None]
+PASSED tests/test_citizen_reply.py::test_reply_text_is_validated[42]
+PASSED tests/test_citizen_reply.py::test_reply_text_is_validated[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+PASSED tests/test_citizen_reply.py::test_second_query_and_reply_round_trip
 PASSED tests/test_dashboard.py::test_kpis_are_accurate
 PASSED tests/test_dashboard.py::test_filters
 PASSED tests/test_dashboard.py::test_empty_data_has_no_crashes
@@ -55,6 +143,31 @@ PASSED tests/test_evidence.py::test_only_assigned_agent_or_supervisor_can_upload
 PASSED tests/test_evidence.py::test_download_evidence
 PASSED tests/test_evidence.py::test_closed_complaint_rejects_evidence
 PASSED tests/test_evidence.py::test_file_type_detected_by_signature
+PASSED tests/test_feedback.py::test_rating_saves_feedback_and_closes_complaint
+PASSED tests/test_feedback.py::test_rating_without_comment_is_accepted
+PASSED tests/test_feedback.py::test_invalid_ratings_are_rejected[0]
+PASSED tests/test_feedback.py::test_invalid_ratings_are_rejected[6]
+PASSED tests/test_feedback.py::test_invalid_ratings_are_rejected[-1]
+PASSED tests/test_feedback.py::test_invalid_ratings_are_rejected[4.5]
+PASSED tests/test_feedback.py::test_invalid_ratings_are_rejected[4]
+PASSED tests/test_feedback.py::test_invalid_ratings_are_rejected[text]
+PASSED tests/test_feedback.py::test_invalid_ratings_are_rejected[True]
+PASSED tests/test_feedback.py::test_invalid_ratings_are_rejected[None]
+PASSED tests/test_feedback.py::test_invalid_ratings_are_rejected[bad8]
+PASSED tests/test_feedback.py::test_comment_limit_is_500_characters
+PASSED tests/test_feedback.py::test_only_the_owner_can_rate
+PASSED tests/test_feedback.py::test_can_rate_only_once
+PASSED tests/test_feedback.py::test_only_resolved_complaints_can_be_rated
+PASSED tests/test_feedback.py::test_rating_after_the_7_day_window_is_rejected
+PASSED tests/test_feedback.py::test_rating_on_day_6_is_accepted
+PASSED tests/test_feedback.py::test_reopened_complaint_gets_a_new_window
+PASSED tests/test_feedback.py::test_agent_is_told_the_rating
+PASSED tests/test_feedback.py::test_resolution_notification_asks_for_a_rating
+PASSED tests/test_feedback.py::test_unrated_resolution_auto_closes_after_7_days
+PASSED tests/test_feedback.py::test_auto_close_leaves_recent_rated_and_reopened_complaints_alone
+PASSED tests/test_feedback.py::test_window_counts_from_the_latest_resolution
+PASSED tests/test_feedback.py::test_csat_trend_averages_ratings_per_day
+PASSED tests/test_feedback.py::test_dashboard_shows_csat_and_trend_after_rating
 PASSED tests/test_notifications.py::test_submission_notifies_citizen_and_assigned_agent
 PASSED tests/test_notifications.py::test_status_updates_sent_to_citizen
 PASSED tests/test_notifications.py::test_resolution_notification_sent
@@ -92,6 +205,14 @@ PASSED tests/test_sla.py::test_violations_and_compliance_tracked
 PASSED tests/test_sla.py::test_new_complaint_gets_sla_deadline
 PASSED tests/test_sla.py::test_admin_configures_rules_others_cannot
 PASSED tests/test_sla.py::test_alert_endpoints
+PASSED tests/test_sla.py::test_category_override_applies_only_to_that_category
+PASSED tests/test_sla.py::test_override_beats_changed_default_and_can_be_removed
+PASSED tests/test_sla.py::test_unknown_severity_falls_back_to_medium
+PASSED tests/test_sla.py::test_admin_sets_category_rule_and_new_complaints_use_it
+PASSED tests/test_sla.py::test_invalid_category_rules_are_rejected_and_nothing_is_saved
+PASSED tests/test_sla.py::test_only_admin_can_change_category_rules
+PASSED tests/test_sla.py::test_escalation_uses_category_rule
+PASSED tests/test_sla.py::test_sla_rules_page_is_served
 PASSED tests/test_status.py::test_new_complaint_starts_new_then_assigned
 PASSED tests/test_status.py::test_status_changes_recorded_with_timestamps
 PASSED tests/test_status.py::test_timeline_shows_complete_history
@@ -99,6 +220,13 @@ PASSED tests/test_status.py::test_invalid_transition_rejected
 PASSED tests/test_status.py::test_permissions_on_status_changes
 PASSED tests/test_status.py::test_only_involved_users_can_view
 PASSED tests/test_status.py::test_unassigned_complaint_stays_new
+PASSED tests/test_storage.py::test_UT04_simultaneous_submissions_get_unique_ticket_ids
+PASSED tests/test_storage.py::test_UT05_simultaneous_submissions_are_all_saved_with_all_fields
+PASSED tests/test_storage.py::test_UT06_simultaneous_account_creation_keeps_every_account
+PASSED tests/test_storage.py::test_UT07_simultaneous_duplicate_email_creates_one_account
+PASSED tests/test_storage.py::test_UT08_simultaneous_notes_saved_with_agent_name_and_timestamp
+PASSED tests/test_storage.py::test_IT04_status_change_and_notes_at_the_same_time_are_all_logged
+PASSED tests/test_storage.py::test_UT09_failed_save_does_not_corrupt_saved_complaints
 PASSED tests/test_submission.py::test_complaint_submitted_successfully
 PASSED tests/test_submission.py::test_images_uploaded_correctly
 PASSED tests/test_submission.py::test_gps_coordinates_stored
@@ -130,4 +258,4 @@ PASSED tests/test_ticket_id.py::test_sequence_increments_within_a_day
 PASSED tests/test_ticket_id.py::test_sequence_restarts_on_new_day
 PASSED tests/test_ticket_id.py::test_no_duplicates_over_many_complaints
 PASSED tests/test_ticket_id.py::test_submitted_complaint_gets_ticket_id
-114 passed in 239.59s (0:03:59)
+179 passed, 278 warnings in 224.65s (0:03:44)
