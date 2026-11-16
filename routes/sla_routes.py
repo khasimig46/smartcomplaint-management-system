@@ -1,23 +1,38 @@
 import threading
 
-from flask import Blueprint, g, jsonify, request
+from flask import Blueprint, g, jsonify, render_template, request
 
 import routes.complaint_routes as cr
-from services import notifications, sla
+from services import audit, feedback, notifications, sla, storage
+from nlp.categorizer import get_categories
 from services.auth import STAFF_ROLES, roles_required
 
 bp = Blueprint("sla", __name__, url_prefix="/sla")
-_lock = threading.Lock()
 
 
 def run_check():
-    with _lock:
+    """One monitor pass: SLA warning/breach alerts, then auto-close of unrated resolutions (Sprint 3 Task 2)."""
+    with storage.LOCK:
         items = cr._load()
         new = sla.check(items)
-        if new:
+        closed = feedback.auto_close(items)
+        if new or closed:
             cr._save(items)
+        for a in new:
+            audit.record(f"sla_{a['type']}", audit.SYSTEM, a["complaint_id"], to=a["to"], message=a["message"])
+        for c in closed:
+            audit.record("auto_closed", audit.SYSTEM, c["id"], reason=c["history"][-1]["note"])
+        if new:
             notifications.sla_alerts(new, items)
+        for c in closed:
+            notifications.status_changed(c, feedback.SYSTEM, c["history"][-1]["note"])
         return new
+
+
+@bp.get("/admin")
+def rules_page():
+    """Admin form for SLA rules (UC-10); the data calls below enforce the admin role."""
+    return render_template("sla_rules.html")
 
 
 @bp.get("/rules")
@@ -30,7 +45,10 @@ def get_rules():
 @roles_required("admin")
 def put_rules():
     try:
-        return jsonify(sla.save_rules(request.get_json(silent=True) or {}))
+        updates = request.get_json(silent=True) or {}
+        rules = sla.save_rules(updates, categories=get_categories())
+        audit.record("sla_rules_changed", g.user["id"], changes=updates)
+        return jsonify(rules)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 

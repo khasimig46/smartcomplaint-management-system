@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Audit Log - Smart Complaint Management System</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 1100px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+    .filters { display: flex; flex-wrap: wrap; gap: .5rem; align-items: end; margin-bottom: .8rem; }
+    .filters label { display: flex; flex-direction: column; font-size: .85rem; }
+    input, button { padding: .45rem; font-size: .95rem; } button { cursor: pointer; }
+    table { border-collapse: collapse; width: 100%; font-size: .9rem; } td, th { border: 1px solid #ddd; padding: .35rem .5rem; text-align: left; vertical-align: top; }
+    code { font-size: .8rem; color: #555; } .err { color: #b91c1c; font-weight: 600; } .ok { color: #15803d; font-weight: 600; }
+    .muted { color: #666; font-size: .85rem; }
+  </style>
+</head>
+<body>
+  <h1>Audit Log</h1>
+  <p class="muted">Append-only and hash-chained. Entries cannot be edited or deleted through the application.</p>
+  <div class="filters">
+    <label>Complaint ID<input id="complaint" placeholder="SCMS-..."></label>
+    <label>Actor ID<input id="actor" placeholder="U-... or system"></label>
+    <label>Action<input id="action" placeholder="e.g. status_changed"></label>
+    <button id="apply">Apply</button>
+    <button id="verify">Verify integrity (admin)</button>
+    <span id="vmsg"></span>
+  </div>
+  <p id="msg" class="err"></p>
+  <table id="log"></table>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const token = localStorage.getItem("scms_token");
+    if (!token) location.href = "/login";
+    const H = { Authorization: `Bearer ${token}` };
+    const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+    async function load() {
+      const qs = new URLSearchParams(Object.fromEntries(["complaint", "actor", "action"]
+        .map((k) => [k, $(k).value.trim()]).filter(([, v]) => v))).toString();
+      const r = await fetch(`/audit?${qs}`, { headers: H });
+      const d = await r.json();
+      if (!r.ok) { $("msg").textContent = d.error; return; }
+      $("msg").textContent = "";
+      $("log").innerHTML = "<tr><th>#</th><th>When (UTC)</th><th>Actor</th><th>Action</th><th>Complaint</th><th>Details</th><th>Hash</th></tr>" +
+        (d.map((e) => `<tr><td>${e.seq}</td><td>${esc(e.at.slice(0, 19).replace("T", " "))}</td><td>${esc(e.actor ?? "unknown")}</td>
+          <td>${esc(e.action)}</td><td>${esc(e.complaint_id ?? "")}</td><td><code>${esc(JSON.stringify(e.details))}</code></td>
+          <td><code>${esc(e.hash.slice(0, 12))}</code></td></tr>`).join("") || "<tr><td colspan=7>No entries</td></tr>");
+    }
+    $("apply").onclick = load;
+    $("verify").onclick = async () => {
+      const r = await fetch("/audit/verify", { headers: H });
+      const d = await r.json();
+      if (d.error) { $("vmsg").textContent = d.error; $("vmsg").className = "err"; return; }
+      $("vmsg").textContent = d.ok ? `Intact: ${d.entries} entries verified.` : `TAMPERED at entry ${d.seq}: ${d.problem}`;
+      $("vmsg").className = d.ok ? "ok" : "err";
+    };
+    load();
+  </script>
+</body>
+</html>

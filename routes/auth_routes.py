@@ -1,6 +1,6 @@
 from flask import Blueprint, g, jsonify, request
 
-from services import auth
+from services import audit, auth
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -17,6 +17,7 @@ def register():
         user = auth.create_user(d.get("name"), d.get("email"), d.get("password"), role="citizen")
     except auth.AuthError as e:
         return _err(e)
+    audit.record("user_registered", user["id"], role="citizen")
     return jsonify(auth.public(user)), 201
 
 
@@ -26,7 +27,10 @@ def login():
     try:
         user = auth.authenticate(d.get("email"), d.get("password"))
     except auth.AuthError as e:
+        # the attempted email is logged so repeated attacks are visible; the password never is
+        audit.record("login_failed", None, email=str(d.get("email") or "")[:254])
         return _err(e)
+    audit.record("login", user["id"], role=user["role"])
     return jsonify({"token": auth.issue_token(user), "user": auth.public(user)})
 
 
@@ -46,6 +50,7 @@ def admin_create_user():
                                 role=d.get("role", "citizen"), department=d.get("department"), zone=d.get("zone"))
     except auth.AuthError as e:
         return _err(e)
+    audit.record("user_created", g.user["id"], user_id=user["id"], role=user["role"], department=user.get("department"))
     return jsonify(auth.public(user)), 201
 
 

@@ -1,4 +1,3 @@
-import json
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -6,8 +5,9 @@ from flask import Blueprint, g, jsonify, request
 
 from nlp.categorizer import get_categories, suggest_categories
 from services import complaints as schema
+from services import feedback
 from services.auth import STAFF_ROLES, load_users, login_required, roles_required
-from services import notifications
+from services import audit, notifications, storage
 from services import resolution
 from services import sla
 from services import status as lifecycle
@@ -21,12 +21,11 @@ UPLOADS = BASE / "uploads"
 
 
 def _load():
-    return json.loads(STORE.read_text()) if STORE.exists() else []
+    return storage.read_json(STORE, [])
 
 
 def _save(items):
-    STORE.parent.mkdir(parents=True, exist_ok=True)
-    STORE.write_text(json.dumps(items, indent=2))
+    storage.write_json(STORE, items)
 
 
 def _can_view(user, complaint):
@@ -49,6 +48,7 @@ def suggest():
 
 @bp.post("/submit-complaint")
 @roles_required("citizen")
+@storage.synchronized   # load -> new ticket ID -> save must not interleave, or two complaints get one ID (FR-003)
 def submit():
     """Accepts multipart/form-data (with images) or JSON (without images)."""
     form = request.form if request.form or request.files else (request.get_json(silent=True) or {})
@@ -90,12 +90,15 @@ def submit():
     sla.assign_deadline(complaint)
     items.append(complaint)
     _save(items)
+    audit.record("complaint_submitted", g.user["id"], ticket, category=category, severity=complaint["severity"],
+                 department=complaint.get("department"), assigned_to=complaint.get("assigned_to"))
     notifications.complaint_submitted(complaint)
     return jsonify(complaint), 201
 
 
 @bp.post("/override-category")
 @login_required
+@storage.synchronized
 def override():
     data = request.get_json(silent=True) or {}
     cid, category = data.get("complaint_id"), data.get("category")
@@ -106,6 +109,7 @@ def override():
         if c["id"] == cid:
             if not _can_view(g.user, c):
                 return jsonify({"error": "You do not have permission to do this"}), 403
+            previous_category = c["category"]
             c["category"], c["overridden"] = category, True
             others = [o for o in items if o["id"] != cid]
             previous_agent = c.get("assigned_to")
@@ -114,6 +118,8 @@ def override():
                 if c["assigned_to"] and c.get("status") == "New":
                     lifecycle.change(c, "Assigned", "system", f"Auto-assigned to {c['assigned_to']}")
             _save(items)
+            audit.record("category_overridden", g.user["id"], cid, from_category=previous_category, to_category=category,
+                         assigned_to=c.get("assigned_to"))
             if c.get("assigned_to") and c["assigned_to"] != previous_agent:
                 notifications.complaint_assigned(c)
             return jsonify(resolution.for_viewer(g.user, c))
@@ -148,6 +154,7 @@ def get_complaint(cid):
 
 @bp.patch("/complaints/<cid>/status")
 @login_required
+@storage.synchronized
 def update_status(cid):
     data = request.get_json(silent=True) or {}
     new_status, note = data.get("status"), (data.get("note") or "").strip() or None
@@ -156,11 +163,59 @@ def update_status(cid):
         if c["id"] == cid:
             if not lifecycle.allowed_by(g.user, c, new_status):
                 return jsonify({"error": "You do not have permission to make this change"}), 403
+            old_status = c.get("status")
             try:
                 resolution.change_status(c, g.user, new_status, note)
             except (lifecycle.TransitionError, ValueError) as e:
                 return jsonify({"error": str(e)}), 400
             _save(items)
+            audit.record("status_changed", g.user["id"], cid, from_status=old_status, to_status=new_status, note=note)
             notifications.status_changed(c, g.user["id"], note)
+            return jsonify(resolution.for_viewer(g.user, c))
+    return jsonify({"error": "Complaint not found"}), 404
+
+
+@bp.post("/complaints/<cid>/feedback")
+@roles_required("citizen")
+@storage.synchronized
+def give_feedback(cid):
+    """Sprint 3 Task 2 (FR-008, UC-03): the owner rates a Resolved complaint 1-5 within 7 days, which closes it."""
+    data = request.get_json(silent=True) or {}
+    items = _load()
+    for c in items:
+        if c["id"] == cid:
+            try:
+                feedback.rate(c, g.user, data.get("rating"), data.get("comment"))
+            except PermissionError as e:
+                return jsonify({"error": str(e)}), 403
+            except ValueError as e:
+                return jsonify({"error": str(e)}), 400
+            except feedback.FeedbackError as e:
+                return jsonify({"error": str(e)}), 409
+            _save(items)
+            audit.record("complaint_rated", g.user["id"], cid, rating=c["feedback"]["rating"],
+                         comment=c["feedback"]["comment"], to_status="Closed")
+            notifications.status_changed(c, g.user["id"], c["history"][-1]["note"])   # agent sees the rating
+            return jsonify(resolution.for_viewer(g.user, c))
+    return jsonify({"error": "Complaint not found"}), 404
+
+
+@bp.post("/complaints/<cid>/reply")
+@roles_required("citizen")
+@storage.synchronized
+def citizen_reply(cid):
+    """Sprint 3 Task 7 (FR-013, UC-04 3a): the owner answers a Pending Info query; work resumes."""
+    items = _load()
+    for c in items:
+        if c["id"] == cid:
+            try:
+                reply = resolution.citizen_reply(c, g.user, (request.get_json(silent=True) or {}).get("text"))
+            except PermissionError as e:
+                return jsonify({"error": str(e)}), 403
+            except ValueError as e:
+                return jsonify({"error": str(e)}), 400
+            _save(items)
+            audit.record("citizen_replied", g.user["id"], cid, text=reply["text"], to_status="In Progress")
+            notifications.citizen_replied(c, reply["text"])
             return jsonify(resolution.for_viewer(g.user, c))
     return jsonify({"error": "Complaint not found"}), 404

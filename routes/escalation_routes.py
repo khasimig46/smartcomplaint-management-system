@@ -1,7 +1,7 @@
 from flask import Blueprint, g, jsonify, render_template, request
 
 import routes.complaint_routes as cr
-from services import escalation, notifications
+from services import audit, escalation, notifications, storage
 from services.auth import load_users, roles_required
 
 bp = Blueprint("escalation", __name__)
@@ -22,6 +22,7 @@ def data():
 
 @bp.post("/complaints/<cid>/escalate")
 @roles_required("supervisor", "admin")
+@storage.synchronized
 def escalate(cid):
     """JSON {reason, department?}; department defaults to the complaint's current team."""
     d = request.get_json(silent=True) or {}
@@ -34,5 +35,9 @@ def escalate(cid):
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     cr._save(items)
+    e = c["escalations"][-1]
+    audit.record("complaint_escalated", g.user["id"], cid, reason=e["reason"], from_department=e["from_department"],
+                 to_department=e["to_department"], from_agent=e["from_agent"], to_agent=e["to_agent"],
+                 new_due_at=c["sla"]["due_at"])
     notifications.complaint_escalated(c)
     return jsonify(c)

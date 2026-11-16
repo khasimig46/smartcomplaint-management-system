@@ -3,6 +3,7 @@ import pytest
 import routes.complaint_routes as cr
 import services.auth as auth
 import services.notifications as notifications
+import services.audit as audit
 import services.sla as sla
 from app import create_app
 
@@ -23,6 +24,7 @@ def app(tmp_path, monkeypatch, outbox):
     monkeypatch.setattr(auth, "USERS", tmp_path / "users.json")
     monkeypatch.setattr(sla, "RULES_FILE", tmp_path / "sla_rules.json")
     monkeypatch.setattr(notifications, "STORE", tmp_path / "notifications.json")
+    monkeypatch.setattr(audit, "LOG", tmp_path / "audit_log.jsonl")
     app = create_app()
     app.config.update(TESTING=True, SECRET_KEY="test-secret")
     return app

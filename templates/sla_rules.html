@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SLA Rules - Smart Complaint Management System</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 860px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+    table { border-collapse: collapse; margin: .5rem 0 1rem; } td, th { border: 1px solid #ddd; padding: .35rem .6rem; text-align: left; }
+    input { width: 5.5rem; padding: .35rem; font-size: .95rem; } button { padding: .5rem 1rem; font-size: 1rem; cursor: pointer; }
+    .muted { color: #666; font-size: .85rem; } .err { color: #b91c1c; } .ok { color: #15803d; font-weight: 600; }
+    input.override { background: #fff7ed; }
+  </style>
+</head>
+<body>
+  <h1>SLA Rules</h1>
+  <p class="muted">Resolution time in hours. A category override replaces the default for that category and severity only.
+    Leave an override empty to use the default. Changes apply to complaints submitted or escalated from now on.</p>
+  <h3>Defaults by severity</h3>
+  <table id="defaults"></table>
+  <h3>Overrides by category</h3>
+  <table id="overrides"></table>
+  <button id="save">Save rules</button> <span id="msg"></span>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const token = localStorage.getItem("scms_token");
+    if (!token) location.href = "/login";
+    const H = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+    const SEV = ["Critical", "High", "Medium", "Low"];
+    const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    let categories = [];
+
+    async function load() {
+      const [r, cats] = await Promise.all([fetch("/sla/rules", { headers: H }), fetch("/categories")]);
+      const rules = await r.json();
+      if (!r.ok) { $("msg").textContent = rules.error; $("msg").className = "err"; return; }
+      categories = await cats.json();
+      $("defaults").innerHTML = `<tr>${SEV.map((s) => `<th>${s}</th>`).join("")}</tr>
+        <tr>${SEV.map((s) => `<td><input type="number" min="0.5" step="0.5" data-sev="${s}" value="${rules[s]}"></td>`).join("")}</tr>`;
+      $("overrides").innerHTML = `<tr><th>Category</th>${SEV.map((s) => `<th>${s}</th>`).join("")}</tr>` +
+        categories.map((c) => `<tr><td>${esc(c)}</td>${SEV.map((s) => {
+          const v = (rules.by_category[c] || {})[s];
+          return `<td><input type="number" min="0.5" step="0.5" class="${v ? "override" : ""}" data-cat="${esc(c)}" data-sev="${s}"
+                   placeholder="${rules[s]}" value="${v ?? ""}"></td>`;
+        }).join("")}</tr>`).join("");
+    }
+
+    $("save").onclick = async () => {
+      const body = { by_category: {} };
+      document.querySelectorAll("#defaults input").forEach((i) => (body[i.dataset.sev] = Number(i.value)));
+      document.querySelectorAll("#overrides input").forEach((i) => {
+        (body.by_category[i.dataset.cat] ||= {})[i.dataset.sev] = i.value === "" ? null : Number(i.value);
+      });
+      const r = await fetch("/sla/rules", { method: "PUT", headers: H, body: JSON.stringify(body) });
+      const d = await r.json();
+      if (!r.ok) { $("msg").textContent = d.error; $("msg").className = "err"; return; }
+      $("msg").textContent = "Saved."; $("msg").className = "ok";
+      await load();
+    };
+    load();
+  </script>
+</body>
+</html>
