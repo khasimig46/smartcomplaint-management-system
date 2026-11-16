@@ -7,6 +7,7 @@ PNG = b"\x89PNG\r\n\x1a\n" + b"0" * 100
 
 
 def form(**overrides):
+    overrides.setdefault("category", "Water Supply")
     return complaint_body(**overrides)
 
 
