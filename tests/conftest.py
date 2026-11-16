@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 import routes.complaint_routes as cr
@@ -19,6 +21,7 @@ def outbox(monkeypatch):
 
 @pytest.fixture
 def app(tmp_path, monkeypatch, outbox):
+    monkeypatch.setenv('NOTIFY_ASYNC', '0')
     monkeypatch.setattr(cr, "STORE", tmp_path / "store.json")
     monkeypatch.setattr(cr, "UPLOADS", tmp_path / "uploads")
     monkeypatch.setattr(auth, "USERS", tmp_path / "users.json")
