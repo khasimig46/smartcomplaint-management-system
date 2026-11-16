@@ -184,6 +184,8 @@ def update_status(cid):
             if not lifecycle.allowed_by(g.user, c, new_status):
                 return jsonify({"error": "You do not have permission to make this change"}), 403
             old_status = c.get("status")
+            if new_status == "Assigned" and not c.get("assigned_to"):
+                return jsonify({"error": "A complaint cannot be Assigned without an assigned agent"}), 400
             try:
                 resolution.change_status(c, g.user, new_status, note)
             except (lifecycle.TransitionError, ValueError) as e:
