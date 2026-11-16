@@ -11,8 +11,7 @@ CONFIDENCE_THRESHOLD = 70
 
 def _get_model():
     global _model
-    if _model is None:
-        if _model is not None:
+    if _model is not None:
         return _model
     if MODEL_PATH.exists():
         try:
@@ -32,8 +31,12 @@ def get_categories():
 
 
 def suggest_categories(text: str, top_n: int = 3):
-    """Return the top N categories with confidence (percent)."""
+    """Return the top N categories with confidence and a 70% confidence flag."""
     model = _get_model()
     probs = model.predict_proba([clean_text(text)])[0]
     ranked = sorted(zip(model.classes_, probs), key=lambda x: -x[1])[:top_n]
-    return [{"category": c, "confidence": round(float(p) * 100, 1), "confident": round(float(p) * 100, 1) >= CONFIDENCE_THRESHOLD} for c, p in ranked]
+    return [
+        {"category": category, "confidence": round(float(probability) * 100, 1),
+         "confident": round(float(probability) * 100, 1) >= CONFIDENCE_THRESHOLD}
+        for category, probability in ranked
+    ]
