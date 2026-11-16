@@ -15,7 +15,7 @@ def test_admin_user_crud_revokes_old_tokens_and_prevents_self_demote(app, make_u
 
     assert client.get(f"/auth/users/{agent['id']}", headers=admin_headers).status_code == 200
     assert client.patch(f"/auth/users/{agent['id']}", json={"name": "Updated Worker"}, headers=admin_headers).get_json()["name"] == "Updated Worker"
-    assert client.get(f"/auth/users/{agent['id']}", headers=old_agent_headers).status_code == 200
+    assert client.get("/auth/me", headers=old_agent_headers).status_code == 200
     assert client.patch(f"/auth/users/{admin['id']}", json={"active": False}, headers=admin_headers).status_code == 400
 
     assert client.delete(f"/auth/users/{agent['id']}", headers=admin_headers).status_code == 200
