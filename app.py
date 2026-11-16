@@ -12,6 +12,7 @@ from routes.notification_routes import bp as notifications_bp
 from routes.resolution_routes import bp as resolution_bp
 from routes.sla_routes import bp as sla_bp, start_monitor
 from services.auth import seed_admin_from_env
+from services import notifications
 
 
 def create_app():
@@ -47,4 +48,5 @@ app = create_app()
 
 if __name__ == "__main__":
     start_monitor(app)  # background SLA checks every 60 s
-    app.run(debug=True, use_reloader=False)
+    notifications.start_delivery_worker()
+    app.run(debug=os.environ.get('FLASK_DEBUG', '0') == '1', use_reloader=False)
