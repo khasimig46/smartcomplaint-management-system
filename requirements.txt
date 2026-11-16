@@ -5,3 +5,6 @@ joblib
 pytest
 PyJWT
 bcrypt
+pytest-cov
+pytest-html
+reportlab

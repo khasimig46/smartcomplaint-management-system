@@ -16,4 +16,4 @@ jobs:
           python-version: "3.11"
       - run: pip install -r requirements.txt
       - run: python -m nlp.train_model
-      - run: pytest -v
+      - run: pytest -v --cov --cov-branch --cov-report=term-missing
