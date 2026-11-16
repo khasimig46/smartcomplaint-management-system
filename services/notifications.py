@@ -99,6 +99,8 @@ def update_preferences(user_id, data):
     user = next(u for u in users if u["id"] == user_id)
     prefs = preferences(user)
     if "phone" in data:
+        if data["phone"] is not None and not isinstance(data["phone"], str):
+            raise ValueError("Phone must be text")
         phone = (data["phone"] or "").strip().replace(" ", "") or None
         if phone and not PHONE_RE.match(phone):
             raise ValueError("Phone must be in international format, e.g. +919876543210")
