@@ -120,14 +120,24 @@ def override():
             if not _can_view(g.user, c):
                 return jsonify({"error": "You do not have permission to do this"}), 403
             previous_category = c["category"]
+            started = c.get("status", "New") not in ("New", "Assigned")
+            if g.user["role"] == "citizen" and started:
+                return jsonify({"error": "Category cannot be changed after work has started"}), 409
             c["category"], c["overridden"] = category, True
             others = [o for o in items if o["id"] != cid]
             previous_agent = c.get("assigned_to")
-            if c.get("status", "New") in ("New", "Assigned"):  # re-route only before work starts
-                c.update(route(category, load_users(), others, zone=c.get("zone")))
-                if c["assigned_to"] and c.get("status") == "New":
+            if not started:
+                assignment = route(category, load_users(), others, zone=c.get("zone"))
+                c.update(assignment)
+                if not c.get("assigned_to"):
+                    c["needs_supervisor"] = True
+                    c["status"] = "New"
+                elif c.get("status") == "New":
                     lifecycle.change(c, "Assigned", "system", f"Auto-assigned to {c['assigned_to']}")
             _save(items)
+            if not c.get("assigned_to"):
+                notifications.notify(notifications.supervisors(), "needs_supervisor",
+                    f"Complaint {c['id']} needs manual assignment after category change.", c)
             audit.record("category_overridden", g.user["id"], cid, from_category=previous_category, to_category=category,
                          assigned_to=c.get("assigned_to"))
             if c.get("assigned_to") and c["assigned_to"] != previous_agent:
