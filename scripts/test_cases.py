@@ -79,10 +79,19 @@ CASES = [
          steps="1. Enter text for which every suggestion is below 70%. 2. Review the response. 3. Choose a category manually.",
          data="Ambiguous text; all confidences < 70%.",
          expected="System asks the citizen to choose a category manually and the submission continues.",
-         change="The 70% threshold is not implemented on main: suggestions are always shown and the top one is "
-                "pre-selected. Manual selection is possible (verified in SV-03). Planned as Sprint 3 Task 5.",
-         tests=[], fixed_status="Not Implemented",
-         actual="No low-confidence prompt; the citizen can still pick any category manually."),
+         change="Implemented in Sprint 3 Task 5: each suggestion carries a 'confident' flag (>= 70%); the form does not "
+                "pre-select a low-confidence suggestion, and a submission without a category is rejected with a "
+                "field error until the citizen chooses one.",
+         tests=["tests/test_confidence_threshold.py::" + t for t in (
+                    "test_threshold_is_70_percent", "test_confident_flag_follows_the_threshold",
+                    "test_srs_example_is_confident_water_supply", "test_vague_text_is_flagged_low_confidence",
+                    "test_suggest_endpoint_returns_confident_flag",
+                    "test_low_confidence_submission_without_category_asks_citizen_to_choose",
+                    "test_low_confidence_submission_continues_once_category_chosen",
+                    "test_confident_submission_without_category_uses_top_suggestion")],
+         actual="SRS example: Water Supply, >= 70%, confident. Vague text: all three suggestions below 70%; submission "
+                "without a category returns 400 asking the citizen to choose and saves nothing; with a chosen "
+                "category it is accepted (201)."),
     dict(id="TC07", req="FR-003", priority="High", scenario="Generate unique ticket ID after submission",
          pre="Citizen is logged in.",
          steps="1. Submit a valid complaint. 2. Note the ticket ID. 3. Submit again and compare. 4. Repeat on a new day.",
@@ -303,6 +312,47 @@ CASES = [
                 S + "test_sv03_nlp_suggestions_and_override"],
          actual="Department changed to Water Department; new agent notified."),
 ]
+
+# TC20 is executed by scripts/load_test.py (run by generate_reports.py), which saves its result here.
+LOAD_RESULT = _ROOT / "docs" / "reports" / "load-test.json"
+
+
+def load_summary(r):
+    return (f"{r['users']} users ({r['ramp_s']:g} s ramp-up, {r['measured_s']:g} s measured, {r['think_time_s'][0]}-"
+            f"{r['think_time_s'][1]} s think time), {r['api']['requests'] + r['pages']['requests']} requests, "
+            f"{r['throughput_rps']} req/s, {r['api']['errors'] + r['pages']['errors']} errors; API p99 "
+            f"{r['api']['p99_ms']:g} ms (target < {r['targets']['api_p99_ms']}), page p95 {r['pages']['p95_ms']:g} ms "
+            f"(target < {r['targets']['page_p95_ms']}); login p99 {r['login']['p99_ms']:g} ms (reported separately)")
+
+
+def apply_load_result():
+    """Set TC20 from the last saved load test (called again by generate_reports.py after a new run)."""
+    global LOAD
+    LOAD = __import__("json").loads(LOAD_RESULT.read_text()) if LOAD_RESULT.exists() else None
+    if not LOAD:
+        return
+    _slowest = max(LOAD["endpoints"].items(), key=lambda kv: kv[1]["p99_ms"])
+    {c["id"]: c for c in CASES}["TC20"].update(
+        pre="App started as `python app.py` (Flask threaded server, SLA monitor, notification worker) on a fresh "
+            "data folder; load generator on the same machine.",
+        scenario=f"{LOAD['users']} concurrent users (NFR-001 revised from 500); API p99 < 500 ms",
+        steps=f"1. Seed {LOAD['users']} citizens, 14 agents and a supervisor. 2. Start {LOAD['users']} virtual users over the ramp-up; each "
+              "repeats a weighted mix (suggest category, submit, list own complaints, view one, inbox, open a "
+              "page) with 1-5 s think time; a supervisor polls the dashboard. 3. Measure every response during "
+              "the measured period. 4. Compare API p99 and page p95 with the targets.",
+        data=f"{LOAD['users']} virtual users; python scripts/load_test.py --users {LOAD['users']}.",
+        change="Executed with scripts/load_test.py (new). NFR-001 revised from 500 to 200 concurrent users for the "
+               "single-process build (SRS 6.2); 500 users needs a database and several worker processes (SAD ADR-2). "
+               "The test found and fixed three defects (DEF-06 to DEF-08: slow JSON saves, unfair lock, Windows "
+               "file-swap errors). Measured on a shared developer laptop; repeat runs varied (API p99 0.14-1.9 s), so "
+               "confirm on the deployment.",
+        fixed_status="Pass" if LOAD["passed"] else "Fail",
+        actual=load_summary(LOAD) + ("." if LOAD["passed"] else
+                                     f". Slowest: {_slowest[0]} p99 {_slowest[1]['p99_ms']:g} ms. See DEF-09."))
+
+
+LOAD = None
+apply_load_result()
 
 if TASK2:   # FR-008 built in Sprint 3 Task 2: TC14 / TC15 become automated cases
     _by_id = {c["id"]: c for c in CASES}

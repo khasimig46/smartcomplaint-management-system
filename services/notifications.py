@@ -129,12 +129,19 @@ def _email_body(message, complaint):
 
 
 def _update_delivery(notification_id, channel, status):
+    _update_deliveries([(notification_id, channel, status)])
+
+
+def _update_deliveries(results):
+    """Record several delivery results with one locked load/save of the notification store."""
+    if not results:
+        return
     with _lock:
         items = _load()
-        for item in items:
-            if item["id"] == notification_id:
-                item.setdefault("delivery", {})[channel] = status
-                break
+        by_id = {item["id"]: item for item in items}
+        for notification_id, channel, status in results:
+            if notification_id in by_id:
+                by_id[notification_id].setdefault("delivery", {})[channel] = status
         _save(items)
 
 
@@ -144,17 +151,33 @@ def _deliver_queued(notification_id, channel, send, args):
 
 
 def process_delivery_queue():
-    """Background worker. Provider errors are recorded and never escape into request handlers."""
+    """Background worker. Provider errors are recorded and never escape into request handlers.
+
+    Sends everything already queued, then records all results in one save, so a burst of notifications does
+    not rewrite the notification store (under the shared lock) once per message (TC20).
+    """
     while True:
-        task = _delivery_queue.get()
-        if task is None:
-            _delivery_queue.task_done()
-            return
-        notification_id, channel, send, args = task
+        batch = [_delivery_queue.get()]
+        while True:
+            try:
+                batch.append(_delivery_queue.get_nowait())
+            except queue.Empty:
+                break
+        stop = None in batch
+        results = []
         try:
-            _deliver_queued(notification_id, channel, send, args)
+            for task in batch:
+                if task is not None:
+                    notification_id, channel, send, args = task
+                    results.append((notification_id, channel, _deliver(send, *args)))
+            _update_deliveries(results)
+        except Exception:
+            log.exception("Recording notification delivery results failed")
         finally:
-            _delivery_queue.task_done()
+            for _ in batch:
+                _delivery_queue.task_done()
+        if stop:
+            return
 
 
 def start_delivery_worker():

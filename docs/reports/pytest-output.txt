@@ -1,11 +1,12 @@
-........................................................................ [ 40%]
-........................................................................ [ 80%]
-...................................                                      [100%]
-=============================== warnings summary ===============================
+........................................................................ [ 36%]
+........................................................................ [ 73%]
+.....................................................                    [100%]
+============================== warnings summary ===============================
 tests/test_audit.py: 12 warnings
 tests/test_auth.py: 4 warnings
 tests/test_categorizer.py: 1 warning
 tests/test_citizen_reply.py: 10 warnings
+tests/test_confidence_threshold.py: 3 warnings
 tests/test_dashboard.py: 2 warnings
 tests/test_escalation.py: 10 warnings
 tests/test_evidence.py: 7 warnings
@@ -14,18 +15,20 @@ tests/test_notifications.py: 10 warnings
 tests/test_resolution.py: 9 warnings
 tests/test_routing.py: 1 warning
 tests/test_sla.py: 7 warnings
+tests/test_sprint3_tasks.py: 4 warnings
 tests/test_status.py: 7 warnings
 tests/test_storage.py: 7 warnings
 tests/test_submission.py: 8 warnings
 tests/test_system_validation.py: 18 warnings
 tests/test_ticket_id.py: 1 warning
-  /usr/local/lib/python3.13/site-packages/jwt/api_jwt.py:149: InsecureKeyLengthWarning: The HMAC key is 11 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  C:\Users\kanch\AppData\Local\Claude-Data\claude_pzs8sxrjxfjjc\scratch-workspaces\7a00ec11-f582-4949-a866-9dc55d88258d\657fd89c-bfe8-4132-b227-5c1773be5076\scratch-2026-11-19-04d509\scms\venv\Lib\site-packages\jwt\api_jwt.py:149: InsecureKeyLengthWarning: The HMAC key is 11 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
     return self._jws.encode(
 
 tests/test_audit.py: 12 warnings
 tests/test_auth.py: 4 warnings
 tests/test_categorizer.py: 1 warning
 tests/test_citizen_reply.py: 10 warnings
+tests/test_confidence_threshold.py: 3 warnings
 tests/test_dashboard.py: 2 warnings
 tests/test_escalation.py: 10 warnings
 tests/test_evidence.py: 7 warnings
@@ -34,51 +37,32 @@ tests/test_notifications.py: 10 warnings
 tests/test_resolution.py: 9 warnings
 tests/test_routing.py: 1 warning
 tests/test_sla.py: 7 warnings
+tests/test_sprint3_tasks.py: 4 warnings
 tests/test_status.py: 7 warnings
 tests/test_storage.py: 7 warnings
 tests/test_submission.py: 8 warnings
 tests/test_system_validation.py: 18 warnings
 tests/test_ticket_id.py: 1 warning
-  /usr/local/lib/python3.13/site-packages/jwt/api_jwt.py:370: InsecureKeyLengthWarning: The HMAC key is 11 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  C:\Users\kanch\AppData\Local\Claude-Data\claude_pzs8sxrjxfjjc\scratch-workspaces\7a00ec11-f582-4949-a866-9dc55d88258d\657fd89c-bfe8-4132-b227-5c1773be5076\scratch-2026-11-19-04d509\scms\venv\Lib\site-packages\jwt\api_jwt.py:370: InsecureKeyLengthWarning: The HMAC key is 11 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
     decoded = self.decode_complete(
 
-tests/test_audit.py::test_full_complaint_lifecycle_is_recorded_with_actor_and_time
-  /usr/local/lib/python3.13/site-packages/sklearn/base.py:525: InconsistentVersionWarning: Trying to unpickle estimator TfidfTransformer from version 1.8.0 when using version 1.9.1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
-  https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
-    warnings.warn(
-
-tests/test_audit.py::test_full_complaint_lifecycle_is_recorded_with_actor_and_time
-  /usr/local/lib/python3.13/site-packages/sklearn/base.py:525: InconsistentVersionWarning: Trying to unpickle estimator TfidfVectorizer from version 1.8.0 when using version 1.9.1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
-  https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
-    warnings.warn(
-
-tests/test_audit.py::test_full_complaint_lifecycle_is_recorded_with_actor_and_time
-  /usr/local/lib/python3.13/site-packages/sklearn/base.py:525: InconsistentVersionWarning: Trying to unpickle estimator LogisticRegression from version 1.8.0 when using version 1.9.1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
-  https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
-    warnings.warn(
-
-tests/test_audit.py::test_full_complaint_lifecycle_is_recorded_with_actor_and_time
-  /usr/local/lib/python3.13/site-packages/sklearn/base.py:525: InconsistentVersionWarning: Trying to unpickle estimator Pipeline from version 1.8.0 when using version 1.9.1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
-  https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
-    warnings.warn(
-
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-==================================== PASSES ====================================
-_________________ test_provider_failure_does_not_break_request _________________
------------------------------- Captured log call -------------------------------
-WARNING  scms.notifications:notifications.py:81 Notification delivery failed: SMTP server unreachable
-________________________ test_sv10_response_time_smoke _________________________
------------------------------ Captured stdout call -----------------------------
+=================================== PASSES ====================================
+________________ test_provider_failure_does_not_break_request _________________
+------------------------------ Captured log call ------------------------------
+WARNING  scms.notifications:notifications.py:86 Notification delivery failed: SMTP server unreachable
+________________________ test_sv10_response_time_smoke ________________________
+---------------------------- Captured stdout call -----------------------------
 
-SV-10 latency over 200 requests: median 1.3 ms, p99 2.6 ms
-================================ tests coverage ================================
-_______________ coverage: platform linux, python 3.13.18-final-0 _______________
+SV-10 latency over 200 requests: median 2.1 ms, p99 4.3 ms
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.13.3-final-0 _______________
 
-Coverage HTML written to dir /home/claude/scms/docs/reports/coverage-html
-Coverage XML written to file /home/claude/scms/docs/reports/coverage.xml
-Coverage JSON written to file /home/claude/scms/docs/reports/coverage.json
-- Generated html report: file:///home/claude/scms/docs/reports/unit-test-report.html -
-=========================== short test summary info ============================
+Coverage HTML written to dir C:\Users\kanch\AppData\Local\Claude-Data\claude_pzs8sxrjxfjjc\scratch-workspaces\7a00ec11-f582-4949-a866-9dc55d88258d\657fd89c-bfe8-4132-b227-5c1773be5076\scratch-2026-11-19-04d509\scms\docs\reports\coverage-html
+Coverage XML written to file C:\Users\kanch\AppData\Local\Claude-Data\claude_pzs8sxrjxfjjc\scratch-workspaces\7a00ec11-f582-4949-a866-9dc55d88258d\657fd89c-bfe8-4132-b227-5c1773be5076\scratch-2026-11-19-04d509\scms\docs\reports\coverage.xml
+Coverage JSON written to file C:\Users\kanch\AppData\Local\Claude-Data\claude_pzs8sxrjxfjjc\scratch-workspaces\7a00ec11-f582-4949-a866-9dc55d88258d\657fd89c-bfe8-4132-b227-5c1773be5076\scratch-2026-11-19-04d509\scms\docs\reports\coverage.json
+- Generated html report: file:///C:/Users/kanch/AppData/Local/Claude-Data/claude_pzs8sxrjxfjjc/scratch-workspaces/7a00ec11-f582-4949-a866-9dc55d88258d/657fd89c-bfe8-4132-b227-5c1773be5076/scratch-2026-11-19-04d509/scms/docs/reports/unit-test-report.html -
+=========================== short test summary info ===========================
 PASSED tests/test_audit.py::test_full_complaint_lifecycle_is_recorded_with_actor_and_time
 PASSED tests/test_audit.py::test_escalation_is_recorded
 PASSED tests/test_audit.py::test_system_actions_are_recorded_as_system
@@ -117,8 +101,16 @@ PASSED tests/test_citizen_reply.py::test_reply_text_is_validated[]
 PASSED tests/test_citizen_reply.py::test_reply_text_is_validated[   ]
 PASSED tests/test_citizen_reply.py::test_reply_text_is_validated[None]
 PASSED tests/test_citizen_reply.py::test_reply_text_is_validated[42]
-PASSED tests/test_citizen_reply.py::test_reply_text_is_validated[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+PASSED tests/test_citizen_reply.py::test_reply_text_is_validated[bad4]
 PASSED tests/test_citizen_reply.py::test_second_query_and_reply_round_trip
+PASSED tests/test_confidence_threshold.py::test_threshold_is_70_percent
+PASSED tests/test_confidence_threshold.py::test_confident_flag_follows_the_threshold
+PASSED tests/test_confidence_threshold.py::test_srs_example_is_confident_water_supply
+PASSED tests/test_confidence_threshold.py::test_vague_text_is_flagged_low_confidence
+PASSED tests/test_confidence_threshold.py::test_suggest_endpoint_returns_confident_flag
+PASSED tests/test_confidence_threshold.py::test_low_confidence_submission_without_category_asks_citizen_to_choose
+PASSED tests/test_confidence_threshold.py::test_low_confidence_submission_continues_once_category_chosen
+PASSED tests/test_confidence_threshold.py::test_confident_submission_without_category_uses_top_suggestion
 PASSED tests/test_dashboard.py::test_kpis_are_accurate
 PASSED tests/test_dashboard.py::test_filters
 PASSED tests/test_dashboard.py::test_empty_data_has_no_crashes
@@ -213,6 +205,12 @@ PASSED tests/test_sla.py::test_invalid_category_rules_are_rejected_and_nothing_i
 PASSED tests/test_sla.py::test_only_admin_can_change_category_rules
 PASSED tests/test_sla.py::test_escalation_uses_category_rule
 PASSED tests/test_sla.py::test_sla_rules_page_is_served
+PASSED tests/test_sprint3_tasks.py::test_admin_user_crud_revokes_old_tokens_and_prevents_self_demote
+PASSED tests/test_sprint3_tasks.py::test_admin_creation_sends_welcome_without_password
+PASSED tests/test_sprint3_tasks.py::test_deactivating_agent_returns_open_work_to_supervisor
+PASSED tests/test_sprint3_tasks.py::test_malformed_json_and_non_object_body_return_400
+PASSED tests/test_sprint3_tasks.py::test_citizen_complaint_view_redacts_internal_escalation_data
+PASSED tests/test_sprint3_tasks.py::test_async_notifications_queue_delivery_and_update_status
 PASSED tests/test_status.py::test_new_complaint_starts_new_then_assigned
 PASSED tests/test_status.py::test_status_changes_recorded_with_timestamps
 PASSED tests/test_status.py::test_timeline_shows_complete_history
@@ -227,6 +225,10 @@ PASSED tests/test_storage.py::test_UT07_simultaneous_duplicate_email_creates_one
 PASSED tests/test_storage.py::test_UT08_simultaneous_notes_saved_with_agent_name_and_timestamp
 PASSED tests/test_storage.py::test_IT04_status_change_and_notes_at_the_same_time_are_all_logged
 PASSED tests/test_storage.py::test_UT09_failed_save_does_not_corrupt_saved_complaints
+PASSED tests/test_storage.py::test_fair_lock_is_reentrant
+PASSED tests/test_storage.py::test_fair_lock_serves_waiters_in_arrival_order
+PASSED tests/test_storage.py::test_read_cache_returns_copies_and_sees_outside_changes
+PASSED tests/test_storage.py::test_save_retries_while_windows_blocks_the_replace
 PASSED tests/test_submission.py::test_complaint_submitted_successfully
 PASSED tests/test_submission.py::test_images_uploaded_correctly
 PASSED tests/test_submission.py::test_gps_coordinates_stored
@@ -258,4 +260,4 @@ PASSED tests/test_ticket_id.py::test_sequence_increments_within_a_day
 PASSED tests/test_ticket_id.py::test_sequence_restarts_on_new_day
 PASSED tests/test_ticket_id.py::test_no_duplicates_over_many_complaints
 PASSED tests/test_ticket_id.py::test_submitted_complaint_gets_ticket_id
-179 passed, 278 warnings in 224.65s (0:03:44)
+197 passed, 288 warnings in 343.42s (0:05:43)

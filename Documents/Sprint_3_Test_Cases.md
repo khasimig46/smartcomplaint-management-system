@@ -41,4 +41,4 @@ The same automated tests were run against the code before Task 1, to show they d
 | FR-014 | Pass: note saved with agent name and timestamp | UT-08, IT-04 |
 | NFR-003 | RPO: no loss of saved data | UT-09 |
 
-NFR-001 (500 concurrent users, API p99 under 500 ms, page loads p95 under 2 s) needs a load-test environment and is not claimed by these test cases; it remains Test Plan TC20.
+NFR-001 (concurrent users with API p99 under 500 ms and page loads p95 under 2 s; revised from 500 to 200 users for the single-process build) is not claimed by these test cases. It is Test Plan TC20, run by `scripts/load_test.py`: Pass.

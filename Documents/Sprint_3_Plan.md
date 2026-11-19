@@ -4,16 +4,16 @@ Sprint 3 (2-6 Nov) covers the spill-over found when the code was reviewed agains
 
 | Task | Title | Priority | Status |
 |---|---|---|---|
-| 1 | Concurrency-Safe Storage & Unique Ticket IDs | High | In review |
-| 2 | Resolution Rating, Feedback & Auto-Close | High | To do |
-| 3 | Immutable Audit Log | High | To do |
-| 4 | Admin User Management (CRUD) | High | To do |
-| 5 | NLP Confidence Threshold (70%) | High | To do |
-| 6 | SLA Rules per Category and Severity | Medium | To do |
-| 7 | Citizen Reply to "Pending Info" | Medium | To do |
-| 8 | Input Validation, Privacy & Workflow Fixes | High | To do |
-| 9 | Asynchronous Notification Delivery | Medium | To do |
-| 10 | Test Case Update & Test Reports | High | To do |
+| 1 | Concurrency-Safe Storage & Unique Ticket IDs | High | Done |
+| 2 | Resolution Rating, Feedback & Auto-Close | High | Done |
+| 3 | Immutable Audit Log | High | Done |
+| 4 | Admin User Management (CRUD) | High | Done |
+| 5 | NLP Confidence Threshold (70%) | High | Done |
+| 6 | SLA Rules per Category and Severity | Medium | Done |
+| 7 | Citizen Reply to "Pending Info" | Medium | Done |
+| 8 | Input Validation, Privacy & Workflow Fixes | High | Done |
+| 9 | Asynchronous Notification Delivery | Medium | Done |
+| 10 | Test Case Update & Test Reports | High | Done |
 
 ---
 

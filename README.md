@@ -85,14 +85,15 @@ Set these as environment variables. All are optional for a local demo.
 ```bash
 pytest                                   # whole suite, about 4 minutes
 pytest --cov --cov-branch                # with statement + branch coverage
-python scripts/generate_reports.py       # rebuilds the Part-3 PDFs in docs/ (runs the suite)
+python scripts/generate_reports.py       # rebuilds the Part-3 PDFs in docs/ (runs the suite and the load test)
+python scripts/load_test.py             # TC20 load test: 200 concurrent users against python app.py (about 1 minute)
 ```
 
 CI runs the suite on every push and pull request (`.github/workflows/ci.yml`).
 
 ## Documents
 
-- `Documents/`: SRS, Test Plan and SAD (v2.0, in the course templates), use-case flows, UML diagram sources in `Documents/diagrams/`; v1.0 versions in `Documents/v1/`
+- `Documents/`: SRS, Test Plan and SAD (v2.1, in the course templates), use-case flows, UML diagram sources in `Documents/diagrams/`; v1.0 versions in `Documents/v1/`
 - `docs/`: unit test, system validation, code coverage and branch coverage reports, and the updated test case document
 
 ## Known limitations
@@ -100,7 +101,7 @@ CI runs the suite on every push and pull request (`.github/workflows/ci.yml`).
 These are documented in the SAD (section 3.5, ADRs, and section 4.6):
 
 - Data lives in JSON files guarded by an in-process lock: **run one process only**. Several workers (e.g. `gunicorn -w 4`) would lose writes.
-- Email/SMS are sent inside the request; a slow provider slows the request down.
+- Email/SMS go through an in-memory background queue: messages still queued when the server stops are lost.
 - No rate limiting on login or submission.
-- The 70% NLP confidence threshold, admin user update/deactivate, and asynchronous notifications are open Sprint 3 tasks.
-- Not load-tested for 500 concurrent users; no TLS (the hosting platform must provide it).
+- Load-tested for 200 concurrent users (TC20, NFR-001 as revised from 500). 500 users needs a database and several worker processes.
+- No TLS (the hosting platform must provide it).
