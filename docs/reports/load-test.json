@@ -1,0 +1,132 @@
+{
+  "date": "2026-11-19T07:12:49+00:00",
+  "users": 200,
+  "ramp_s": 10.0,
+  "measured_s": 30.0,
+  "think_time_s": [
+    1,
+    5
+  ],
+  "throughput_rps": 66.5,
+  "api": {
+    "requests": 1685,
+    "errors": 0,
+    "median_ms": 15.6,
+    "p95_ms": 79.8,
+    "p99_ms": 138.9,
+    "max_ms": 395.8
+  },
+  "pages": {
+    "requests": 294,
+    "errors": 0,
+    "median_ms": 11.5,
+    "p95_ms": 20.2,
+    "p99_ms": 26.5,
+    "max_ms": 35.9
+  },
+  "login": {
+    "requests": 15,
+    "errors": 0,
+    "median_ms": 325.3,
+    "p95_ms": 402.3,
+    "p99_ms": 402.3,
+    "max_ms": 402.3
+  },
+  "endpoints": {
+    "GET / (page)": {
+      "requests": 73,
+      "errors": 0,
+      "median_ms": 11.4,
+      "p95_ms": 18.9,
+      "p99_ms": 26.5,
+      "max_ms": 26.5
+    },
+    "GET /complaints/<id>": {
+      "requests": 139,
+      "errors": 0,
+      "median_ms": 16.1,
+      "p95_ms": 29.6,
+      "p99_ms": 40.5,
+      "max_ms": 42.8
+    },
+    "GET /complaints/mine": {
+      "requests": 623,
+      "errors": 0,
+      "median_ms": 15.5,
+      "p95_ms": 27.5,
+      "p99_ms": 39.3,
+      "max_ms": 81.8
+    },
+    "GET /dashboard/data": {
+      "requests": 4,
+      "errors": 0,
+      "median_ms": 14.0,
+      "p95_ms": 20.5,
+      "p99_ms": 20.5,
+      "max_ms": 20.5
+    },
+    "GET /login (page)": {
+      "requests": 79,
+      "errors": 0,
+      "median_ms": 8.0,
+      "p95_ms": 20.2,
+      "p99_ms": 26.8,
+      "max_ms": 26.8
+    },
+    "GET /notifications (page)": {
+      "requests": 77,
+      "errors": 0,
+      "median_ms": 11.7,
+      "p95_ms": 24.3,
+      "p99_ms": 26.5,
+      "max_ms": 26.5
+    },
+    "GET /notifications/data": {
+      "requests": 334,
+      "errors": 0,
+      "median_ms": 15.8,
+      "p95_ms": 27.7,
+      "p99_ms": 54.4,
+      "max_ms": 97.2
+    },
+    "GET /track (page)": {
+      "requests": 65,
+      "errors": 0,
+      "median_ms": 11.8,
+      "p95_ms": 17.5,
+      "p99_ms": 35.9,
+      "max_ms": 35.9
+    },
+    "POST /auth/login": {
+      "requests": 15,
+      "errors": 0,
+      "median_ms": 325.3,
+      "p95_ms": 402.3,
+      "p99_ms": 402.3,
+      "max_ms": 402.3
+    },
+    "POST /submit-complaint": {
+      "requests": 202,
+      "errors": 0,
+      "median_ms": 72.4,
+      "p95_ms": 166.1,
+      "p99_ms": 348.6,
+      "max_ms": 395.8
+    },
+    "POST /suggest-category": {
+      "requests": 383,
+      "errors": 0,
+      "median_ms": 13.2,
+      "p95_ms": 21.6,
+      "p99_ms": 30.9,
+      "max_ms": 35.8
+    }
+  },
+  "targets": {
+    "api_p99_ms": 500,
+    "page_p95_ms": 2000
+  },
+  "first_errors": [],
+  "passed": true,
+  "note": "Recorded run of 19-11-2026 07:12 UTC on a shared developer laptop. Repeat 200-user runs on the same laptop varied (API p99 0.14-1.9 s), so confirm on the deployment."
+}

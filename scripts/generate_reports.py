@@ -34,6 +34,7 @@ from reportlab.platypus import KeepTogether, PageBreak, Paragraph, SimpleDocTemp
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import test_cases  # noqa: E402
 from test_cases import CASES, SPRINT3, SPRINT3_LABEL, SV_CASES, TASK2, TASK3, TASK6, TASK7  # noqa: E402
 
 DOCS, RAW = ROOT / "docs", ROOT / "docs" / "reports"
@@ -375,14 +376,20 @@ def system_report(junit, meta, latency):
                 else sv_status(fn)
             rows.append([sid, flow, tcs, reqs, res])
         s.append(table(rows, [w * .07, w * .45, w * .18, w * .18, w * .12], status_col=4))
-        s.append(P("* TC06: SV-03 confirms only the manual-selection fallback, not the 70% threshold.", "small"))
+        s.append(P("* TC06: SV-03 confirms the manual-selection path; the 70% threshold itself is tested in "
+                   "tests/test_confidence_threshold.py.", "small"))
         if latency:
             n, med, p99 = latency
             s.append(P(f"SV-10 measured {n} requests: median {med} ms, p99 {p99} ms (single client, in-process, no "
                        "network). This shows the application code is far inside the 500 ms budget, but it is "
-                       "<b>not</b> the 500-concurrent-user test NFR-001 requires"
-                       + (". With DEF-01 fixed, that load test is the next step." if SPRINT3 else
+                       "<b>not</b> the concurrent-user test NFR-001 requires"
+                       + (". The load test is TC20 below." if test_cases.LOAD else
+                          ". With DEF-01 fixed, that load test is the next step." if SPRINT3 else
                           "; see DEF-01 for why concurrency must be fixed first.")))
+        if test_cases.LOAD:
+            s.append(P("<b>TC20 load test (NFR-001):</b> " + test_cases.load_summary(test_cases.LOAD) + ". Result: <b>"
+                       + ("Pass" if test_cases.LOAD["passed"] else "Fail") + "</b>. Raw figures per endpoint are in "
+                       "docs/reports/load-test.json."))
         s += [P("4. Requirement validation matrix", "h1")]
         req_rows = [["Requirement", "Test cases", "Status", "Notes"]]
         for req, tcs, note, *forced in REQ_MATRIX:
@@ -402,7 +409,12 @@ def system_report(junit, meta, latency):
         s += [P("7. Conclusion", "h1"),
               P("All implemented core use cases (submit, categorise, route, track, resolve, escalate, notify, "
                 "monitor SLA, dashboard, RBAC) pass end-to-end. "
-                + ("DEF-01 (concurrent writes) was fixed in Sprint 3; NFR-001 still needs a networked "
+                + ((f"NFR-001 passes the {test_cases.LOAD['users']}-user load test (TC20; target revised from 500 "
+                     "users for the single-process build). " if test_cases.LOAD["passed"] else
+                    f"NFR-001 fails the {test_cases.LOAD['users']}-user load test (TC20, DEF-09): the single-process, JSON-file design "
+                    "tops out below that on the test machine; a database and several worker "
+                    "processes are needed (SAD ADR-2). ") if test_cases.LOAD else
+                   "DEF-01 (concurrent writes) was fixed in Sprint 3; NFR-001 still needs a networked "
                    "500-user load test. " if SPRINT3 else
                    "The system is not yet release-ready for multi-user load: DEF-01 must be merged before "
                    "NFR-001 is load-tested. ")
@@ -416,7 +428,7 @@ def system_report(junit, meta, latency):
 
 REQ_MATRIX = [
     ("FR-001 Submission", ["TC01", "TC02", "TC03", "TC04"], "Limits, image checks and GPS validated."),
-    ("FR-002 NLP categories", ["TC05", "TC06", "TC28"], "Top-3 + override pass; 70% threshold not implemented."),
+    ("FR-002 NLP categories", ["TC05", "TC06", "TC28"], "Top-3, override and the 70% confidence threshold pass."),
     ("FR-003 Ticket ID", ["TC07"], "Sequential and concurrent uniqueness pass (DEF-01 fixed in Sprint 3).")
     if SPRINT3 else
     ("FR-003 Ticket ID", ["TC07"], "Sequential uniqueness passes; concurrent uniqueness fails on main (DEF-01).", "Partial"),
@@ -429,7 +441,7 @@ REQ_MATRIX = [
      "Built in Sprint 3 Task 2: 1-5 rating closes; unrated auto-close after 7 days." if TASK2 else
      "Not built; Sprint 3 Task 2."),
     ("FR-009 Escalation", ["TC16"], "Priority queue and SLA reset."),
-    ("FR-010 RBAC", ["TC17", "TC26"], "45 role/endpoint checks; user update/deactivate pending."),
+    ("FR-010 RBAC", ["TC17", "TC26"], "45 role/endpoint checks; admin user read, update and deactivate (Sprint 3 Task 4)."),
     ("FR-011 Dashboard", ["TC18", "TC24"], "KPIs, filters, CSV, 60 s refresh; "
      + ("CSAT and CSAT trend from ratings." if TASK2 else "CSAT N/A.")),
     ("FR-012 Audit log", ["TC19"], "Hash-chained append-only log with viewer and verify (Sprint 3 Task 3)." if TASK3
@@ -437,7 +449,9 @@ REQ_MATRIX = [
     ("FR-013 Resolution", ["TC22"] + (["TC29"] if TASK7 else []), "Resolution notes required; citizen notified"
      + ("; citizen can answer Pending Info (Sprint 3 Task 7)." if TASK7 else ".")),
     ("FR-014 Notes / evidence", ["TC21", "TC22"], "10 MB limit, content-type check, staff-only notes."),
-    ("NFR-001 Performance", ["TC20"], "Load test not executed; single-client smoke only."),
+    ("NFR-001 Performance", ["TC20"], "Load test with scripts/load_test.py at the revised 200-user target "
+     "(was 500; see SRS 6.2); results in section 3."
+     if test_cases.LOAD else "Load test not executed; single-client smoke only."),
     ("NFR-002 Security", ["TC26"], "App-level controls pass (bcrypt, JWT, RBAC, file signatures). TLS 1.3 and "
      "AES-256 at rest are deployment concerns and were not tested.", "Partial"),
     ("NFR-003 Availability", [], "Not tested: needs a deployed environment." + (" Atomic writes (Sprint 3) cover a failed save (UT-09)."
@@ -447,11 +461,12 @@ def remaining_work():
     built = [x for x, done in (("FR-008 ratings and auto-close", TASK2), ("the FR-012 audit log", TASK3),
                                 ("per-category SLA rules", TASK6), ("citizen replies to Pending Info", TASK7)) if done]
     left = [x for x, done in (("FR-008 (ratings, auto-close)", TASK2), ("the FR-012 immutable audit log", TASK3),
-                               ("per-category SLA rules", TASK6)) if not done] + ["the 70% NLP threshold"]
+                               ("per-category SLA rules", TASK6)) if not done]
     def join(xs):
         return xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + " and " + xs[-1]
     head = f"Sprint 3 delivered {join(built)}. " if built else ""
-    return head + f"Still open: {', '.join(left)}, plus NFR-001/NFR-003, which need a deployed environment."
+    open_nfr = "NFR-003, which needs a deployed environment" if test_cases.LOAD else         "NFR-001/NFR-003, which need a deployed environment"
+    return head + (f"Still open: {', '.join(left)}, plus {open_nfr}." if left else f"Still open: {open_nfr}.")
 
 
 DEFECTS = [
@@ -468,22 +483,42 @@ DEFECTS = [
     ("DEF-03", "Medium", "FR-012: no immutable audit log; history is stored inside the editable complaint record."
      + (" Fixed in Sprint 3 Task 3: hash-chained append-only log; tail truncation is still undetectable without an "
         "external anchor." if TASK3 else ""), "Fixed" if TASK3 else "Open"),
-    ("DEF-04", "Low", "FR-002: no 70% confidence threshold or low-confidence prompt.", "Open"),
+    ("DEF-04", "Low", "FR-002: no 70% confidence threshold or low-confidence prompt. Fixed in Sprint 3 Task 5; "
+     "TC06 automated in tests/test_confidence_threshold.py.", "Fixed"),
     ("DEF-05", "Low", "FR-006: SLA hours depend on severity only, not category and severity."
      + (" Fixed in Sprint 3 Task 6 (per-category overrides)." if TASK6 else ""), "Fixed" if TASK6 else "Open"),
-]
+] + ([
+    ("DEF-06", "High", "Found by TC20: every save serialised the whole JSON file with json.dump(indent=2), the "
+     "pure-Python encoder writing token by token, while holding the store lock (about 0.25 s per save once the "
+     "files grew), so submissions queued for 30 s+. Fixed: compact JSON in one write; unchanged files are not "
+     "re-read (services/storage.py). A submission with 300 stored complaints went from 563 ms to 67 ms.", "Fixed"),
+    ("DEF-07", "Medium", "Found by TC20: threading.RLock is not first-come-first-served, so under contention single "
+     "requests waited 30 s+ while later ones went first. Fixed: FairRLock hands the lock over in arrival order; "
+     "the notification worker records a batch of deliveries in one save.", "Fixed"),
+    ("DEF-08", "Medium", "Found by TC20 on Windows: replacing or opening a JSON file while another thread is "
+     "swapping it fails with PermissionError, failing that save (notification delivery status lost). Fixed: the "
+     "swap and the read are retried briefly.", "Fixed"),
+    ("DEF-09", "High", "NFR-001 load test: " + test_cases.load_summary(test_cases.LOAD) + ". One Python process "
+     "serves every request and every write holds one lock over whole-file JSON stores, so throughput is capped at "
+     "about 100-120 requests/s on the test machine (200 users pass). Needs a database and several worker "
+     "processes (SAD ADR-2).", "Open"),
+] if test_cases.LOAD and not test_cases.LOAD["passed"] else [])
 DEVIATIONS = [
     ("Architecture", "Lab 3 justification: microservices (6 services behind an API gateway, each with its own "
      "data store).",
      "Single Flask application with blueprints per service and JSON file storage. Module boundaries match the "
      "SAD components, so services can be split out later."),
-    ("Category field", "Mandatory on submission.", "Optional; the top NLP suggestion is used when left empty."),
+    ("Category field", "Mandatory on submission.", "Optional when the top NLP suggestion is at least 70% "
+     "confident (it is then used); below 70% the citizen must choose."),
     ("Lifecycle", "Linear New -> ... -> Closed.", "Citizen can reopen a Resolved complaint (back to In Progress)."),
     ("Confirmation", "Shows a timeline link.", "Shows ticket ID and category; timeline is on the Track page."),
     ("Notifications", "Sent through an asynchronous queue so a slow provider never blocks a request.",
-     "Sent inside the request; a provider failure is caught and logged so the request still succeeds, but a slow "
-     "provider adds latency (up to the 10 s timeout)."),
+     "As designed since Sprint 3 Task 9: in-app record saved in the request; email/SMS queued for a background "
+     "worker that records sent/failed."),
     ("Evidence", "Agents attach files (FR-014).", "Supervisors and admins may also attach evidence."),
+    ("NFR-001 load", "500 concurrent users, API p99 < 500 ms.",
+     "Revised to 200 concurrent users for the single-process, JSON-file build: a 500-user run on the test machine "
+     "kept submissions waiting 15-25 s. 500 users needs a database and several worker processes (SAD ADR-2)."),
 ]
 
 
@@ -531,6 +566,12 @@ def main():
         latency = m.groups() if m else None
     else:
         code, latency = run_suite()
+        if "--no-load" not in sys.argv:   # TC20: load test against `python app.py`
+            subprocess.run([sys.executable, str(ROOT / "scripts" / "load_test.py"),
+                            "--out", str(RAW / "load-test.json")], cwd=ROOT)
+            # report tables are built at import time: rebuild the PDFs in a fresh process that reads the new result
+            rebuilt = subprocess.run([sys.executable, str(Path(__file__).resolve()), "--no-run"], cwd=ROOT)
+            return code or rebuilt.returncode
     junit = load_junit()
     cov = json.loads((RAW / "coverage.json").read_text())
     passed = sum(t["outcome"] == "Pass" for t in junit.values())

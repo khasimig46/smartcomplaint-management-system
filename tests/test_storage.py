@@ -142,12 +142,24 @@ def test_UT09_failed_save_does_not_corrupt_saved_complaints(app, citizen, monkey
     """UT-09 Data Reliability (NFR-003, RPO). Pass: a failure while saving loses no previously saved complaint."""
     first = submit(app, citizen)[1]
 
-    def disk_full(data, f, **kw):
-        f.write(json.dumps(data)[:20])          # part of the file is written, then the disk fills up
-        raise OSError("No space left on device")
+    real_fdopen = storage.os.fdopen
+
+    class DiskFull:
+        def __init__(self, f):
+            self.f = f
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            self.f.close()
+
+        def write(self, text):
+            self.f.write(text[:20])             # part of the file is written, then the disk fills up
+            raise OSError("No space left on device")
 
     with monkeypatch.context() as m:
-        m.setattr(storage.json, "dump", disk_full)
+        m.setattr(storage.os, "fdopen", lambda fd, *a, **kw: DiskFull(real_fdopen(fd, *a, **kw)))
         with pytest.raises(OSError):
             submit(app, citizen)
 
@@ -155,3 +167,60 @@ def test_UT09_failed_save_does_not_corrupt_saved_complaints(app, citizen, monkey
     assert r.status_code == 200 and r.get_json()["title"] == "Pothole on MG Road"
     assert [c["id"] for c in cr._load()] == [first["id"]]                 # failed submission not half-saved
     assert not list(cr.STORE.parent.glob(f".{cr.STORE.name}.*.tmp"))      # no temp file left behind
+
+
+# ---- TC20 follow-up: fair lock and read cache ----
+def test_fair_lock_is_reentrant():
+    lock = storage.FairRLock()
+    with lock:
+        with lock:
+            pass
+    with pytest.raises(RuntimeError):
+        lock.release()
+
+
+def test_fair_lock_serves_waiters_in_arrival_order():
+    lock, order, started = storage.FairRLock(), [], []
+    lock.acquire()
+
+    def worker(i):
+        started.append(i)
+        with lock:
+            order.append(i)
+
+    threads = []
+    for i in range(10):                      # queue the waiters one at a time, in a known order
+        t = threading.Thread(target=worker, args=(i,))
+        t.start()
+        threads.append(t)
+        while len(lock._waiters) < i + 1:
+            pass
+    lock.release()
+    for t in threads:
+        t.join(timeout=5)
+    assert order == list(range(10))
+
+
+def test_read_cache_returns_copies_and_sees_outside_changes(tmp_path):
+    path = tmp_path / "data.json"
+    storage.write_json(path, [{"a": 1}])
+    first = storage.read_json(path, [])
+    first.append("changed by caller")
+    assert storage.read_json(path, []) == [{"a": 1}]           # caller's change does not leak into the cache
+    path.write_text(json.dumps([{"a": 2}, {"b": 3}]))            # edited outside the app
+    assert storage.read_json(path, []) == [{"a": 2}, {"b": 3}]
+    assert storage.read_json(tmp_path / "missing.json", "default") == "default"
+
+
+def test_save_retries_while_windows_blocks_the_replace(tmp_path, monkeypatch):
+    path, real_replace, calls = tmp_path / "data.json", storage.os.replace, []
+
+    def busy_then_ok(src, dst):
+        calls.append(1)
+        if len(calls) < 3:
+            raise PermissionError("[WinError 5] Access is denied")   # a reader has the file open
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(storage.os, "replace", busy_then_ok)
+    storage.write_json(path, {"ok": True})
+    assert len(calls) == 3 and storage.read_json(path, None) == {"ok": True}
